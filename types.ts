@@ -1,4 +1,5 @@
 
+
 export enum BookingStatus {
   AVAILABLE = 'available',
   BOOKED = 'booked',
@@ -589,83 +590,83 @@ export interface Database {
           players?: Json
         }
       }
+      tournaments: {
+        Row: {
+          id: string;
+          created_at: string;
+          club_id: string;
+          name: string;
+          category: string;
+          date: string;
+          status: string;
+          format: string;
+          teams: Json | null;
+          max_teams: number;
+          teams_per_group: number;
+          registrations: Json | null;
+          advancing_teams: Json | null;
+          data: Json | null;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          club_id: string;
+          name: string;
+          category: string;
+          date: string;
+          status: string;
+          format: string;
+          teams?: Json | null;
+          max_teams: number;
+          teams_per_group: number;
+          registrations?: Json | null;
+          advancing_teams?: Json | null;
+          data?: Json | null;
+        };
+        Update: {
+          id?: string;
+          created_at?: string;
+          club_id?: string;
+          name?: string;
+          category?: string;
+          date?: string;
+          status?: string;
+          format?: string;
+          teams?: Json | null;
+          max_teams?: number;
+          teams_per_group?: number;
+          registrations?: Json | null;
+          advancing_teams?: Json | null;
+          data?: Json | null;
+        };
+      };
       tournament_registrations: {
         Row: {
           id: string
           created_at: string
           tournament_id: string
           team_name: string
-          player_ids: string[]
-          player_details: Json | null
-          status: "pending" | "approved" | "rejected"
+          player_ids: Json
+          player_details: Json
+          status: string
         }
         Insert: {
           id?: string
           created_at?: string
           tournament_id: string
           team_name: string
-          player_ids: string[]
-          player_details?: Json | null
-          status?: "pending" | "approved" | "rejected"
+          player_ids: Json
+          player_details: Json
+          status: string
         }
         Update: {
           id?: string
           created_at?: string
           tournament_id?: string
           team_name?: string
-          player_ids?: string[]
-          player_details?: Json | null
-          status?: "pending" | "approved" | "rejected"
-        }
-      }
-      tournaments: {
-        Row: {
-          id: string
-          created_at: string
-          club_id: string
-          name: string
-          category: string
-          date: string
-          status: string
-          format: string
-          teams: Json | null
-          max_teams: number
-          teams_per_group: number
-          registrations: Json | null
-          advancing_teams: Json | null
-          data: Json | null
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          club_id: string
-          name: string
-          category: string
-          date: string
-          status: string
-          format: string
-          teams?: Json | null
-          max_teams: number
-          teams_per_group: number
-          registrations?: Json | null
-          advancing_teams?: Json | null
-          data?: Json | null
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          club_id?: string
-          name?: string
-          category?: string
-          date?: string
+          player_ids?: Json
+          player_details?: Json
           status?: string
-          format?: string
-          teams?: Json | null
-          max_teams?: number
-          teams_per_group?: number
-          registrations?: Json | null
-          advancing_teams?: Json | null
-          data?: Json | null
         }
       }
     }

@@ -259,7 +259,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             photos: validUrls,
         };
 
-        const { error: profileError } = await supabase.from('club_profiles').insert(profileToInsert);
+        const { error: profileError } = await supabase.from('club_profiles').insert([profileToInsert]);
         if (profileError) {
              showToast({ text: `Falló la creación del perfil: ${profileError.message}`, type: 'error'});
              return;
@@ -296,13 +296,13 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         
         await supabase.from('public_matches').update({ current_players: match.currentPlayers + 1 }).eq('id', matchId);
 
-        const newNotification = {
+        const newNotification: Database['public']['Tables']['notifications']['Insert'] = {
             type: 'match_join' as const,
             title: '¡Te has unido a un partido!',
             message: `Confirmada tu plaza en el partido de las ${match.time} en ${match.courtName}.`,
             user_id: userProfile.id,
         };
-        await supabase.from('notifications').insert(newNotification);
+        await supabase.from('notifications').insert([newNotification]);
         showToast({ text: "Te has unido al partido.", type: 'success' });
 
     }, [userProfile, publicMatches, showToast]);
@@ -331,7 +331,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         };
 
         setMessages(prev => [...prev, newMessageForUI]);
-        await supabase.from('messages').insert(newMessageForDb);
+        await supabase.from('messages').insert([newMessageForDb]);
 
         const notification: Database['public']['Tables']['notifications']['Insert'] = {
             type: 'message' as const,
@@ -340,7 +340,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             link: { view: 'chat' as const, params: { conversationId: selectedConversationId } },
             user_id: otherUserId,
         };
-        await supabase.from('notifications').insert(notification);
+        await supabase.from('notifications').insert([notification]);
         
     }, [selectedConversationId, userProfile, loggedInClub, allPlayers, allClubs]);
 
@@ -528,7 +528,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             payload: { fromId: userProfile.id }
         };
 
-        const { error } = await supabase.from('notifications').insert(newNotification);
+        const { error } = await supabase.from('notifications').insert([newNotification]);
         if (error) {
             showToast({ text: `Error al enviar la solicitud: ${error.message}`, type: 'error'});
         } else {
@@ -575,7 +575,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 message: `${userProfile.firstName} ${userProfile.lastName} ha aceptado tu solicitud.`,
                 user_id: fromId,
             };
-            await supabase.from('notifications').insert(acceptNotification);
+            await supabase.from('notifications').insert([acceptNotification]);
         }
     }, [userProfile, allPlayers, showToast]);
     

@@ -67,7 +67,7 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             ...(tournament.advancingTeams && { advancing_teams: tournament.advancingTeams as unknown as Json }),
         };
 
-        const { data: dbData, error } = await supabase.from('tournaments').insert(tournamentToInsert).select().single();
+        const { data: dbData, error } = await supabase.from('tournaments').insert([tournamentToInsert]).select().single();
         if (error) {
             showToast({ text: `Error al crear el torneo: ${error.message}`, type: 'error'});
         } else if (dbData) {
@@ -149,10 +149,10 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
                 { id: userProfile.id, name: `${userProfile.firstName} ${userProfile.lastName}`, category: userProfile.category },
                 { id: partner.id, name: `${partner.firstName} ${partner.lastName}`, category: partner.category },
             ] as unknown as Json,
-            status: 'pending' as 'pending',
+            status: 'pending',
         };
         
-        const { data, error } = await supabase.from('tournament_registrations').insert(newRegistrationForDb).select().single();
+        const { data, error } = await supabase.from('tournament_registrations').insert([newRegistrationForDb]).select().single();
 
         if (error) {
             showToast({ text: `Error al enviar la inscripción: ${error.message}`, type: 'error'});
@@ -169,7 +169,7 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             link: { view: 'tournaments' as const, params: { tournamentId } },
             user_id: tournamentToUpdate.clubId,
         };
-        await supabase.from('notifications').insert(clubNotification);
+        await supabase.from('notifications').insert([clubNotification]);
         
         setTournaments(prev => prev.map(t => t.id === tournamentId ? { ...t, registrations: [...t.registrations, data as TournamentRegistration] } : t));
         showToast({ text: "¡Inscripción enviada! El club revisará tu solicitud.", type: 'success'});

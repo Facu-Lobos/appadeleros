@@ -66,7 +66,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             ] = await Promise.all([
                 supabase.from('club_profiles').select('*'),
                 supabase.from('courts').select('*'),
-                supabase.from('tournaments').select('*, teams(*), registrations(*), data'),
+                supabase.from('tournaments').select('*'),
                 supabase.from('player_profiles').select('*'),
                 supabase.from('public_matches').select('*'),
                 supabase.from('rankings').select('*'),

@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 export enum BookingStatus {
   AVAILABLE = 'available',
   BOOKED = 'booked',
@@ -221,7 +214,7 @@ export interface Ranking {
 
 // --- Chat Types ---
 export interface ChatMessage {
-  id: string;
+  id: number;
   conversationId: string;
   senderId: string; // 'player-alex', 'club-1', etc.
   receiverId: string;
@@ -249,7 +242,7 @@ export interface NotificationLinkParams {
 }
 
 export interface Notification {
-  id: string;
+  id: number;
   user_id: string;
   type: NotificationType;
   title: string;
@@ -292,8 +285,8 @@ export type Json =
   | number
   | boolean
   | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+  | { [key: string]: any }
+  | any[]
 
 export interface Database {
   public: {
@@ -305,10 +298,10 @@ export interface Database {
           court_id: string
           user_id: string
           player_name: string
-          booking_date: string // "YYYY-MM-DD"
-          booking_time: string // "HH:MM"
+          booking_date: string
+          booking_time: string
           booking_type: "single" | "fixed"
-          day_of_week: number | null // JS Standard: 0=Sun, 1=Mon, ..., 6=Sat
+          day_of_week: number | null
         }
         Insert: {
           id?: string
@@ -336,57 +329,54 @@ export interface Database {
       club_profiles: {
         Row: {
           id: string
-          created_at: string
-          email: string
-          member_id: string
-          name: string
-          country: string
-          state: string
-          city: string
-          total_courts: number
-          opening_time: string
-          closing_time: string
-          opening_days: string[]
-          status: "Abierto" | "Cerrado"
-          turn_duration: number
-          has_buffet: boolean
-          photos: string[]
+          email: string | null
+          member_id: string | null
+          name: string | null
+          country: string | null
+          state: string | null
+          city: string | null
+          total_courts: number | null
+          opening_time: string | null
+          closing_time: string | null
+          opening_days: string[] | null
+          status: string | null
+          turn_duration: number | null
+          has_buffet: boolean | null
+          photos: string[] | null
         }
         Insert: {
           id: string
-          created_at?: string
-          email: string
-          member_id: string
-          name: string
-          country: string
-          state: string
-          city: string
-          total_courts: number
-          opening_time: string
-          closing_time: string
-          opening_days: string[]
-          status: "Abierto" | "Cerrado"
-          turn_duration: number
-          has_buffet: boolean
-          photos: string[]
+          email?: string | null
+          member_id?: string | null
+          name?: string | null
+          country?: string | null
+          state?: string | null
+          city?: string | null
+          total_courts?: number | null
+          opening_time?: string | null
+          closing_time?: string | null
+          opening_days?: string[] | null
+          status?: string | null
+          turn_duration?: number | null
+          has_buffet?: boolean | null
+          photos?: string[] | null
         }
         Update: {
           id?: string
-          created_at?: string
-          email?: string
-          member_id?: string
-          name?: string
-          country?: string
-          state?: string
-          city?: string
-          total_courts?: number
-          opening_time?: string
-          closing_time?: string
-          opening_days?: string[]
-          status?: "Abierto" | "Cerrado"
-          turn_duration?: number
-          has_buffet?: boolean
-          photos?: string[]
+          email?: string | null
+          member_id?: string | null
+          name?: string | null
+          country?: string | null
+          state?: string | null
+          city?: string | null
+          total_courts?: number | null
+          opening_time?: string | null
+          closing_time?: string | null
+          opening_days?: string[] | null
+          status?: string | null
+          turn_duration?: number | null
+          has_buffet?: boolean | null
+          photos?: string[] | null
         }
       }
       courts: {
@@ -398,7 +388,7 @@ export interface Database {
           location: "Indoor" | "Outdoor"
           surface: "Alfombra" | "Cemento"
           club_id: string
-          club_name: string
+          club_name: string | null
         }
         Insert: {
           id?: string
@@ -408,7 +398,7 @@ export interface Database {
           location: "Indoor" | "Outdoor"
           surface: "Alfombra" | "Cemento"
           club_id: string
-          club_name: string
+          club_name?: string | null
         }
         Update: {
           id?: string
@@ -418,12 +408,12 @@ export interface Database {
           location?: "Indoor" | "Outdoor"
           surface?: "Alfombra" | "Cemento"
           club_id?: string
-          club_name?: string
+          club_name?: string | null
         }
       }
       messages: {
         Row: {
-          id: string
+          id: number
           created_at: string
           conversation_id: string
           sender_id: string
@@ -432,7 +422,7 @@ export interface Database {
           read: boolean
         }
         Insert: {
-          id?: string
+          id?: number
           created_at?: string
           conversation_id: string
           sender_id: string
@@ -441,7 +431,7 @@ export interface Database {
           read?: boolean
         }
         Update: {
-          id?: string
+          id?: number
           created_at?: string
           conversation_id?: string
           sender_id?: string
@@ -452,10 +442,10 @@ export interface Database {
       }
       notifications: {
         Row: {
-          id: string
+          id: number
           created_at: string
           user_id: string
-          type: NotificationType
+          type: string
           title: string
           message: string
           read: boolean
@@ -463,10 +453,10 @@ export interface Database {
           payload: Json | null
         }
         Insert: {
-          id?: string
+          id?: number
           created_at?: string
           user_id: string
-          type: NotificationType
+          type: string
           title: string
           message: string
           read?: boolean
@@ -474,10 +464,10 @@ export interface Database {
           payload?: Json | null
         }
         Update: {
-          id?: string
+          id?: number
           created_at?: string
           user_id?: string
-          type?: NotificationType
+          type?: string
           title?: string
           message?: string
           read?: boolean
@@ -488,114 +478,114 @@ export interface Database {
       player_profiles: {
         Row: {
           id: string
-          created_at: string
-          first_name: string
-          last_name: string
-          sex: PlayerSex
-          country: string
-          state: string
-          city: string
-          availability: string[]
-          category: PlayerCategory
-          avatar_url: string
-          photos: string[]
-          stats: Json
-          upcoming_matches: Json
-          match_history: Json
-          friends: string[]
+          email: string | null
+          first_name: string | null
+          last_name: string | null
+          sex: string | null
+          country: string | null
+          state: string | null
+          city: string | null
+          availability: string[] | null
+          category: string | null
+          avatar_url: string | null
+          photos: string[] | null
+          stats: Json | null
+          upcoming_matches: Json | null
+          match_history: Json | null
+          friends: string[] | null
         }
         Insert: {
           id: string
-          created_at?: string
-          first_name: string
-          last_name: string
-          sex: PlayerSex
-          country: string
-          state: string
-          city: string
-          availability: string[]
-          category: PlayerCategory
-          avatar_url: string
-          photos: string[]
-          stats: Json
-          upcoming_matches: Json
-          match_history: Json
-          friends: string[]
+          email?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          sex?: string | null
+          country?: string | null
+          state?: string | null
+          city?: string | null
+          availability?: string[] | null
+          category?: string | null
+          avatar_url?: string | null
+          photos?: string[] | null
+          stats?: Json | null
+          upcoming_matches?: Json | null
+          match_history?: Json | null
+          friends?: string[] | null
         }
         Update: {
           id?: string
-          created_at?: string
-          first_name?: string
-          last_name?: string
-          sex?: PlayerSex
-          country?: string
-          state?: string
-          city?: string
-          availability?: string[]
-          category?: PlayerCategory
-          avatar_url?: string
-          photos?: string[]
-          stats?: Json
-          upcoming_matches?: Json
-          match_history?: Json
-          friends?: string[]
+          email?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          sex?: string | null
+          country?: string | null
+          state?: string | null
+          city?: string | null
+          availability?: string[] | null
+          category?: string | null
+          avatar_url?: string | null
+          photos?: string[] | null
+          stats?: Json | null
+          upcoming_matches?: Json | null
+          match_history?: Json | null
+          friends?: string[] | null
         }
       }
       public_matches: {
         Row: {
           id: string
           created_at: string
-          club_id: string
-          court_name: string
-          time: string
-          category: string
-          gender: "Masculino" | "Femenino" | "Mixto"
-          players_needed: number
-          current_players: number
-          created_by: string
+          club_id: string | null
+          court_name: string | null
+          time: string | null
+          category: string | null
+          gender: "Masculino" | "Femenino" | "Mixto" | null
+          players_needed: number | null
+          current_players: number | null
+          created_by: string | null
         }
         Insert: {
           id?: string
           created_at?: string
-          club_id: string
-          court_name: string
-          time: string
-          category: string
-          gender: "Masculino" | "Femenino" | "Mixto"
-          players_needed: number
-          current_players: number
-          created_by: string
+          club_id?: string | null
+          court_name?: string | null
+          time?: string | null
+          category?: string | null
+          gender?: "Masculino" | "Femenino" | "Mixto" | null
+          players_needed?: number | null
+          current_players?: number | null
+          created_by?: string | null
         }
         Update: {
           id?: string
           created_at?: string
-          club_id?: string
-          court_name?: string
-          time?: string
-          category?: string
-          gender?: "Masculino" | "Femenino" | "Mixto"
-          players_needed?: number
-          current_players?: number
-          created_by?: string
+          club_id?: string | null
+          court_name?: string | null
+          time?: string | null
+          category?: string | null
+          gender?: "Masculino" | "Femenino" | "Mixto" | null
+          players_needed?: number | null
+          current_players?: number | null
+          created_by?: string | null
         }
       }
       rankings: {
         Row: {
           id: number
           created_at: string
-          category: PlayerCategory
+          category: string
           players: Json
         }
         Insert: {
           id?: number
           created_at?: string
-          category: PlayerCategory
+          category: string
           players: Json
         }
         Update: {
           id?: number
           created_at?: string
-          category?: PlayerCategory
+          category?: string
           players?: Json
         }
       }
@@ -606,7 +596,7 @@ export interface Database {
           tournament_id: string
           team_name: string
           player_ids: string[]
-          player_details: Json
+          player_details: Json | null
           status: "pending" | "approved" | "rejected"
         }
         Insert: {
@@ -615,8 +605,8 @@ export interface Database {
           tournament_id: string
           team_name: string
           player_ids: string[]
-          player_details: Json
-          status: "pending" | "approved" | "rejected"
+          player_details?: Json | null
+          status?: "pending" | "approved" | "rejected"
         }
         Update: {
           id?: string
@@ -624,7 +614,7 @@ export interface Database {
           tournament_id?: string
           team_name?: string
           player_ids?: string[]
-          player_details?: Json
+          player_details?: Json | null
           status?: "pending" | "approved" | "rejected"
         }
       }
@@ -634,48 +624,48 @@ export interface Database {
           created_at: string
           club_id: string
           name: string
-          category: PlayerCategory
+          category: string
           date: string
-          status: "Inscripción Abierta" | "Próximo" | "Fase de Grupos" | "Fase Final" | "Finalizado"
-          format: "Copa del Mundo"
-          teams: Json
+          status: string
+          format: string
+          teams: Json | null
           max_teams: number
           teams_per_group: number
-          registrations: Json
+          registrations: Json | null
           advancing_teams: Json | null
-          data: Json
+          data: Json | null
         }
         Insert: {
           id?: string
           created_at?: string
           club_id: string
           name: string
-          category: PlayerCategory
+          category: string
           date: string
-          status: "Inscripción Abierta" | "Próximo" | "Fase de Grupos" | "Fase Final" | "Finalizado"
-          format: "Copa del Mundo"
-          teams: Json
+          status: string
+          format: string
+          teams?: Json | null
           max_teams: number
           teams_per_group: number
-          registrations: Json
+          registrations?: Json | null
           advancing_teams?: Json | null
-          data: Json
+          data?: Json | null
         }
         Update: {
           id?: string
           created_at?: string
           club_id?: string
           name?: string
-          category?: PlayerCategory
+          category?: string
           date?: string
-          status?: "Inscripción Abierta" | "Próximo" | "Fase de Grupos" | "Fase Final" | "Finalizado"
-          format?: "Copa del Mundo"
-          teams?: Json
+          status?: string
+          format?: string
+          teams?: Json | null
           max_teams?: number
           teams_per_group?: number
-          registrations?: Json
+          registrations?: Json | null
           advancing_teams?: Json | null
-          data?: Json
+          data?: Json | null
         }
       }
     }

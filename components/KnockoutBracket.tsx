@@ -65,7 +65,7 @@ const MatchCard = ({ match, roundName, availableTeams, onUpdate, isFirstRound }:
 
 
 const KnockoutBracket: React.FC<KnockoutBracketProps> = ({ tournament, onUpdateMatch }) => {
-    const { data: { knockout }, advancingTeams = [] } = tournament;
+    const { data: { knockout }, advancing_teams = [] } = tournament;
 
     const assignedTeams = useMemo(() => {
         const teamIds = new Set<string>();
@@ -81,7 +81,7 @@ const KnockoutBracket: React.FC<KnockoutBracketProps> = ({ tournament, onUpdateM
         return teamIds;
     }, [knockout]);
 
-    const availableTeams = useMemo(() => advancingTeams.filter(t => !assignedTeams.has(t.id)), [advancingTeams, assignedTeams]);
+    const availableTeams = useMemo(() => advancing_teams.filter(t => !assignedTeams.has(t.id)), [advancing_teams, assignedTeams]);
 
     const handleUpdate = (match: KnockoutMatch, teamSlot: 'teamA' | 'teamB', team: Team | null, scoreStr?: string) => {
         let updatedTournament: Tournament = JSON.parse(JSON.stringify(tournament));

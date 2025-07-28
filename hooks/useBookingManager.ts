@@ -1,5 +1,6 @@
 
 
+
 import { useState, useCallback, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { TimeSlotData, CourtData, UserProfileData, ClubProfileData, BookingStatus, NotificationType, Booking, ToastMessage, Database } from '../types';
@@ -47,7 +48,7 @@ export const useBookingManager = ({ showToast, userProfile, loggedInClub, baseCo
         const dateKey = selectedDate.toISOString().split('T')[0];
         const dayOfWeekJs = selectedDate.getDay();
 
-        const newBookingForDb: Database['public']['Tables']['bookings']['Insert'] = {
+        const newBookingForDb = {
             court_id: courtId,
             user_id: currentUserId,
             player_name: playerName,
@@ -87,7 +88,7 @@ export const useBookingManager = ({ showToast, userProfile, loggedInClub, baseCo
             });
         }
 
-        const newNotification: Database['public']['Tables']['notifications']['Insert'] = {
+        const newNotification = {
             type: 'booking' as NotificationType,
             title: 'Reserva Confirmada',
             message: `Tu pista en ${selectedCourt.name} a las ${selectedSlot.time} ha sido reservada.`,
@@ -134,7 +135,7 @@ export const useBookingManager = ({ showToast, userProfile, loggedInClub, baseCo
         }
 
         const currentUserId = userProfile?.id || loggedInClub!.id;
-        const cancellationNotification: Database['public']['Tables']['notifications']['Insert'] = {
+        const cancellationNotification = {
             type: 'booking' as NotificationType,
             title: 'Reserva Cancelada',
             message: `La reserva de la pista ${selectedCourt.name} a las ${time} ha sido cancelada.`,

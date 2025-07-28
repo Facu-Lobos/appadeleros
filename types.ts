@@ -1,5 +1,4 @@
 
-
 export enum BookingStatus {
   AVAILABLE = 'available',
   BOOKED = 'booked',
@@ -136,6 +135,7 @@ export interface ClubProfileData {
 export type Team = {
   id: string;
   name: string;
+  playerIds: string[];
 };
 
 export type GroupMatch = {
@@ -168,26 +168,26 @@ export type TournamentFormat = 'Copa del Mundo';
 
 export interface TournamentRegistration {
   id: string;
-  tournamentId: string;
-  teamName: string;
-  playerIds: string[];
-  playerDetails: { id: string; name: string; category: PlayerCategory }[];
+  tournament_id: string;
+  team_name: string;
+  player_ids: string[];
+  player_details: { id: string; name: string; category: PlayerCategory }[];
   status: 'pending' | 'approved' | 'rejected';
 }
 
 export interface Tournament {
   id: string;
-  clubId: string;
+  club_id: string;
   name: string;
   category: PlayerCategory;
   date: string;
   status: 'Inscripción Abierta' | 'Próximo' | 'Fase de Grupos' | 'Fase Final' | 'Finalizado';
   format: TournamentFormat;
   teams: Team[];
-  maxTeams: number;
-  teamsPerGroup: number;
-  registrations: TournamentRegistration[];
-  advancingTeams?: Team[];
+  max_teams: number;
+  teams_per_group: number;
+  tournament_registrations: TournamentRegistration[];
+  advancing_teams?: Team[];
   data: {
     groups?: Group[];
     knockout?: {
@@ -589,6 +589,12 @@ export interface Database {
           category?: string
           players?: Json
         }
+        Upsert: {
+          id?: number
+          created_at?: string
+          category: string
+          players: Json
+        }
       }
       tournaments: {
         Row: {
@@ -603,7 +609,6 @@ export interface Database {
           teams: Json | null;
           max_teams: number;
           teams_per_group: number;
-          registrations: Json | null;
           advancing_teams: Json | null;
           data: Json | null;
         };
@@ -619,7 +624,6 @@ export interface Database {
           teams?: Json | null;
           max_teams: number;
           teams_per_group: number;
-          registrations?: Json | null;
           advancing_teams?: Json | null;
           data?: Json | null;
         };
@@ -635,7 +639,6 @@ export interface Database {
           teams?: Json | null;
           max_teams?: number;
           teams_per_group?: number;
-          registrations?: Json | null;
           advancing_teams?: Json | null;
           data?: Json | null;
         };
@@ -646,7 +649,7 @@ export interface Database {
           created_at: string
           tournament_id: string
           team_name: string
-          player_ids: Json
+          player_ids: string[]
           player_details: Json
           status: string
         }
@@ -655,7 +658,7 @@ export interface Database {
           created_at?: string
           tournament_id: string
           team_name: string
-          player_ids: Json
+          player_ids: string[]
           player_details: Json
           status: string
         }
@@ -664,7 +667,7 @@ export interface Database {
           created_at?: string
           tournament_id?: string
           team_name?: string
-          player_ids?: Json
+          player_ids?: string[]
           player_details?: Json
           status?: string
         }
@@ -684,3 +687,4 @@ export interface Database {
     }
   }
 }
+

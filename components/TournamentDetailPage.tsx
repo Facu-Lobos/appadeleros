@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { Tournament, Group, GroupMatch, Team, KnockoutMatch, TournamentRegistration } from '../types';
 import KnockoutBracket from './KnockoutBracket';
@@ -34,9 +35,9 @@ const RegistrationCard: React.FC<{
         <div className={`bg-dark-tertiary p-4 rounded-lg border-l-4 ${statusClasses[registration.status]}`}>
             <div className="flex justify-between items-start">
                 <div>
-                    <p className="font-bold text-white">{registration.teamName}</p>
+                    <p className="font-bold text-white">{registration.team_name}</p>
                     <div className="text-sm text-light-secondary mt-1">
-                        {registration.playerDetails.map(p => (
+                        {registration.player_details.map(p => (
                             <p key={p.id}>{p.name} ({p.category})</p>
                         ))}
                     </div>
@@ -167,7 +168,7 @@ const TournamentDetailPage: React.FC<TournamentDetailPageProps> = ({ tournament,
         const updatedTournament = {
             ...tournament,
             status: 'Fase Final' as 'Fase Final',
-            advancingTeams,
+            advancing_teams: advancingTeams,
             data: {
                 ...tournament.data,
                 knockout: {
@@ -214,7 +215,7 @@ const TournamentDetailPage: React.FC<TournamentDetailPageProps> = ({ tournament,
 
     const getTabClass = (tabName: ActiveTab) => `flex-1 py-2 px-1 text-center border-b-2 font-medium cursor-pointer ${activeTab === tabName ? 'border-primary text-primary' : 'border-transparent text-light-secondary hover:text-light-primary'}`;
 
-    const isTournamentFull = tournament.teams.length >= tournament.maxTeams;
+    const isTournamentFull = tournament.teams.length >= tournament.max_teams;
 
     return (
         <div className="bg-dark-secondary p-6 rounded-lg">
@@ -234,12 +235,12 @@ const TournamentDetailPage: React.FC<TournamentDetailPageProps> = ({ tournament,
                 <div>
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-xl font-bold text-white">Solicitudes de Inscripción</h3>
-                        <span className="text-lg font-semibold text-primary">{tournament.teams.length} / {tournament.maxTeams} <span className="text-sm text-light-secondary">equipos</span></span>
+                        <span className="text-lg font-semibold text-primary">{tournament.teams.length} / {tournament.max_teams} <span className="text-sm text-light-secondary">equipos</span></span>
                     </div>
                     <div className="space-y-3">
-                        {tournament.registrations.length === 0 ? (
+                        {tournament.tournament_registrations.length === 0 ? (
                              <p className="text-light-secondary text-center py-8">Aún no hay inscripciones.</p>
-                        ) : tournament.registrations.map(reg => (
+                        ) : tournament.tournament_registrations.map(reg => (
                             <RegistrationCard 
                                 key={reg.id} 
                                 registration={reg} 

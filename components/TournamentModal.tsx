@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Tournament, TournamentFormat, PlayerCategory, ClubProfileData } from '../types';
 import { PLAYER_CATEGORIES } from '../constants';
@@ -45,16 +46,16 @@ const TournamentModal: React.FC<TournamentModalProps> = ({ isOpen, onClose, onCo
         if (name.trim() && category.trim() && date) {
             const newTournament: Tournament = {
                 id: `t-${Date.now()}`,
-                clubId,
+                club_id: clubId,
                 name,
                 category,
                 date,
                 status: 'Inscripción Abierta',
                 format,
                 teams: [],
-                maxTeams,
-                teamsPerGroup,
-                registrations: [],
+                max_teams: maxTeams,
+                teams_per_group: teamsPerGroup,
+                tournament_registrations: [],
                 data: {
                     groups: [],
                     knockout: {}

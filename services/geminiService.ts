@@ -1,14 +1,15 @@
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { PlayerSuggestion, UserProfileData } from '../types';
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 // Only initialize GAIA if the key exists to prevent crashes.
 const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
 if (!ai) {
-    console.warn("API_KEY environment variable not set. AI features will be disabled and will return mock data.");
+    console.warn("VITE_GEMINI_API_KEY environment variable not set. AI features will be disabled and will return mock data.");
 }
 
 const suggestionSchema = {

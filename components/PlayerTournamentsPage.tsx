@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useMemo } from 'react';
 import { Tournament, ClubProfileData, UserProfileData, PlayerCategory } from '../types';
 import TournamentRegistrationModal from './TournamentRegistrationModal';
@@ -26,7 +28,7 @@ const PlayerTournamentsPage: React.FC<PlayerTournamentsPageProps> = ({ currentUs
     const getClubName = (clubId: string) => clubs.find(c => c.id === clubId)?.name || 'Club Desconocido';
 
     const getRegistrationStatus = (tournament: Tournament) => {
-        const registration = tournament.registrations.find(r => r.playerIds.includes(currentUser.id));
+        const registration = tournament.tournament_registrations.find(r => r.player_ids.includes(currentUser.id));
         if (!registration) return null;
         
         const statusInfo = {
@@ -67,19 +69,19 @@ const PlayerTournamentsPage: React.FC<PlayerTournamentsPageProps> = ({ currentUs
                 ) : (
                     openTournaments.map(t => {
                         const registrationStatus = getRegistrationStatus(t);
-                        const isFull = t.teams.length >= t.maxTeams;
+                        const isFull = t.teams.length >= t.max_teams;
 
                         return (
                              <div key={t.id} className="bg-dark-secondary border border-dark-tertiary rounded-lg p-4 transition-shadow hover:shadow-lg">
                                  <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                                     <div className="flex-grow">
                                         <h3 className="text-xl font-bold text-white">{t.name}</h3>
-                                        <p className="text-sm text-light-secondary">Organizado por: <span className="font-semibold text-light-primary">{getClubName(t.clubId)}</span></p>
+                                        <p className="text-sm text-light-secondary">Organizado por: <span className="font-semibold text-light-primary">{getClubName(t.club_id)}</span></p>
                                         <p className="text-sm text-light-secondary">Categoría: <span className="font-semibold text-light-primary">{t.category}</span></p>
                                         <p className="text-sm text-light-secondary">Fecha: <span className="font-semibold text-light-primary">{new Date(t.date + 'T00:00:00').toLocaleDateString()}</span></p>
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
-                                        <span className="text-lg font-bold text-primary">{t.teams.length} / {t.maxTeams} <span className="text-sm font-normal text-light-secondary">equipos</span></span>
+                                        <span className="text-lg font-bold text-primary">{t.teams.length} / {t.max_teams} <span className="text-sm font-normal text-light-secondary">equipos</span></span>
                                         {registrationStatus ? (
                                             registrationStatus
                                         ) : (

@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Tournament, ClubProfileData } from '../types';
 import { TrophyIcon } from '../constants';
@@ -58,7 +59,7 @@ const TournamentManager: React.FC<TournamentManagerProps> = ({ tournaments, onCr
                              <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusClass(t.status)}`}>
                                 {t.status}
                             </span>
-                            <span className="text-sm text-light-secondary">{t.teams.length} / {t.maxTeams} equipos</span>
+                            <span className="text-sm text-light-secondary">{t.teams.length} / {t.max_teams} equipos</span>
                          </div>
                     </div>
                 )) : (

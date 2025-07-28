@@ -1,6 +1,7 @@
 
 
 
+
 import { useState, useCallback } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Tournament, Team, Group, GroupMatch, UserProfileData, NotificationType, TournamentRegistration, ToastMessage, Ranking, Database, PlayerRankingEntry, Json } from '../types';
@@ -52,22 +53,21 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
 
     const handleCreateTournament = useCallback(async (tournament: Tournament) => {
         if (!supabase) return;
-        const tournamentToInsert: Database['public']['Tables']['tournaments']['Insert'] = {
-            club_id: tournament.clubId,
+        const tournamentToInsert = {
+            club_id: tournament.club_id,
             name: tournament.name,
             category: tournament.category,
             date: tournament.date,
             status: tournament.status,
             format: tournament.format,
-            teams: tournament.teams as unknown as Json,
-            max_teams: tournament.maxTeams,
-            teams_per_group: tournament.teamsPerGroup,
-            registrations: tournament.registrations as unknown as Json,
-            data: tournament.data as unknown as Json,
-            ...(tournament.advancingTeams && { advancing_teams: tournament.advancingTeams as unknown as Json }),
+            teams: tournament.teams as Json,
+            max_teams: tournament.max_teams,
+            teams_per_group: tournament.teams_per_group,
+            data: tournament.data as Json,
+            ...(tournament.advancing_teams && { advancing_teams: tournament.advancing_teams as Json }),
         };
 
-        const { data: dbData, error } = await supabase.from('tournaments').insert([tournamentToInsert]).select().single();
+        const { data: dbData, error } = await supabase.from('tournaments').insert([tournamentToInsert]).select('*, tournament_registrations(*)').single();
         if (error) {
             showToast({ text: `Error al crear el torneo: ${error.message}`, type: 'error'});
         } else if (dbData) {
@@ -79,22 +79,21 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
     const handleUpdateTournament = useCallback(async (updatedTournament: Tournament) => {
         if (!supabase) return;
 
-        const tournamentToUpdate: Database['public']['Tables']['tournaments']['Update'] = {
+        const tournamentToUpdate = {
             name: updatedTournament.name,
             category: updatedTournament.category,
             date: updatedTournament.date,
             status: updatedTournament.status,
             format: updatedTournament.format,
-            teams: updatedTournament.teams as unknown as Json,
-            registrations: updatedTournament.registrations as unknown as Json,
-            data: updatedTournament.data as unknown as Json,
-            club_id: updatedTournament.clubId,
-            max_teams: updatedTournament.maxTeams,
-            teams_per_group: updatedTournament.teamsPerGroup,
-            ...(updatedTournament.advancingTeams && { advancing_teams: updatedTournament.advancingTeams as unknown as Json }),
+            teams: updatedTournament.teams as Json,
+            data: updatedTournament.data as Json,
+            club_id: updatedTournament.club_id,
+            max_teams: updatedTournament.max_teams,
+            teams_per_group: updatedTournament.teams_per_group,
+            ...(updatedTournament.advancing_teams && { advancing_teams: updatedTournament.advancing_teams as Json }),
         };
 
-        const { data, error } = await supabase.from('tournaments').update(tournamentToUpdate).eq('id', updatedTournament.id).select().single();
+        const { data, error } = await supabase.from('tournaments').update(tournamentToUpdate).eq('id', updatedTournament.id).select('*, tournament_registrations(*)').single();
         if (error) {
             showToast({ text: `Error al actualizar el torneo: ${error.message}`, type: 'error'});
         } else if (data) {
@@ -106,7 +105,7 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
                 const points = calculateTournamentPoints(newTournament);
                 const newRankings = updateRankingsWithPoints(rankings, points, newTournament.category);
 
-                const rankingsToUpsert: Database['public']['Tables']['rankings']['Insert'][] = newRankings.map(r => ({
+                const rankingsToUpsert = newRankings.map(r => ({
                     category: r.category,
                     players: r.players as unknown as Json,
                 }));
@@ -141,37 +140,39 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             return;
         }
 
-        const newRegistrationForDb: Database['public']['Tables']['tournament_registrations']['Insert'] = {
+        const newRegistrationForDb = {
             tournament_id: tournamentId,
             team_name: teamName,
             player_ids: [userProfile.id, partner.id],
             player_details: [
                 { id: userProfile.id, name: `${userProfile.firstName} ${userProfile.lastName}`, category: userProfile.category },
                 { id: partner.id, name: `${partner.firstName} ${partner.lastName}`, category: partner.category },
-            ] as unknown as Json,
+            ] as Json,
             status: 'pending',
         };
         
         const { data, error } = await supabase.from('tournament_registrations').insert([newRegistrationForDb]).select().single();
 
-        if (error) {
-            showToast({ text: `Error al enviar la inscripción: ${error.message}`, type: 'error'});
+        if (error || !data) {
+            showToast({ text: `Error al enviar la inscripción: ${error?.message}`, type: 'error'});
             return;
         }
+        
+        const registrationData = data as TournamentRegistration;
 
         const tournamentToUpdate = tournaments.find(t => t.id === tournamentId);
         if (!tournamentToUpdate) return;
         
-        const clubNotification: Database['public']['Tables']['notifications']['Insert'] = {
+        const clubNotification = {
             type: 'tournament_registration' as const,
             title: 'Nueva inscripción a torneo',
             message: `El equipo '${teamName}' se ha inscrito en '${tournamentToUpdate.name}'.`,
-            link: { view: 'tournaments' as const, params: { tournamentId } },
-            user_id: tournamentToUpdate.clubId,
+            link: { view: 'tournaments' as const, params: { tournamentId } } as Json,
+            user_id: tournamentToUpdate.club_id,
         };
         await supabase.from('notifications').insert([clubNotification]);
         
-        setTournaments(prev => prev.map(t => t.id === tournamentId ? { ...t, registrations: [...t.registrations, data as TournamentRegistration] } : t));
+        setTournaments(prev => prev.map(t => t.id === tournamentId ? { ...t, tournament_registrations: [...t.tournament_registrations, registrationData] } : t));
         showToast({ text: "¡Inscripción enviada! El club revisará tu solicitud.", type: 'success'});
 
     }, [userProfile, allPlayers, tournaments, showToast]);
@@ -179,46 +180,51 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
     const handleRegistrationAction = useCallback(async (tournamentId: string, registrationId: string, status: 'approved' | 'rejected') => {
         if (!supabase) return;
         
-        const { data: updatedReg, error } = await supabase.from('tournament_registrations').update({ status }).eq('id', registrationId).select().single();
+        const update = { status };
+        const { data: updatedReg, error } = await supabase.from('tournament_registrations').update(update).eq('id', registrationId).select().single();
         if(error || !updatedReg) {
             showToast({ text: `Error al actualizar la inscripción: ${error?.message}`, type: 'error'});
             return;
         }
 
         const registrationToNotify = updatedReg as TournamentRegistration;
-        let tournamentName = '';
+        let tournamentToUpdateLocally = tournaments.find(t => t.id === tournamentId);
+        if(!tournamentToUpdateLocally) return;
+
+        // Update local tournament state
+        const updatedRegistrations = tournamentToUpdateLocally.tournament_registrations.map(r => r.id === registrationId ? { ...r, status } : r);
+        let updatedTeams = tournamentToUpdateLocally.teams;
         
-        setTournaments(prev => prev.map(t => {
-            if (t.id === tournamentId) {
-                tournamentName = t.name;
-                const updatedRegistrations = t.registrations.map(r => r.id === registrationId ? { ...r, status } : r);
-                const newTeams = status === 'approved' ? [...t.teams, { id: registrationToNotify.id, name: registrationToNotify.teamName }] : t.teams;
-                return { ...t, registrations: updatedRegistrations, teams: newTeams };
-            }
-            return t;
-        }));
+        if (status === 'approved') {
+           updatedTeams = [...tournamentToUpdateLocally.teams, { id: registrationToNotify.id, name: registrationToNotify.team_name, playerIds: registrationToNotify.player_ids }];
+           const tournamentUpdate = { teams: updatedTeams as Json };
+           await supabase.from('tournaments').update(tournamentUpdate).eq('id', tournamentId);
+        }
+        
+        setTournaments(prev => prev.map(t => t.id === tournamentId ? { ...t, tournament_registrations: updatedRegistrations, teams: updatedTeams } : t));
         
         const notificationType: NotificationType = status === 'approved' ? 'tournament_approval' : 'tournament_rejection';
-        const playerNotification: Omit<Database['public']['Tables']['notifications']['Insert'], 'user_id'> = {
+        const playerNotification = {
             type: notificationType,
-            title: `Inscripción a '${tournamentName}' ${status === 'approved' ? 'Aprobada' : 'Rechazada'}`,
-            message: `Tu inscripción para el equipo '${registrationToNotify.teamName}' ha sido ${status === 'approved' ? 'aprobada' : 'rechazada'}.`,
-            link: { view: 'tournaments' as const },
+            title: `Inscripción a '${tournamentToUpdateLocally.name}' ${status === 'approved' ? 'Aprobada' : 'Rechazada'}`,
+            message: `Tu inscripción para el equipo '${registrationToNotify.team_name}' ha sido ${status === 'approved' ? 'aprobada' : 'rechazada'}.`,
+            link: { view: 'tournaments' as const } as Json,
         };
 
-        await supabase.from('notifications').insert([
-            { ...playerNotification, user_id: registrationToNotify.playerIds[0] },
-            { ...playerNotification, user_id: registrationToNotify.playerIds[1] },
-        ]);
+        const notificationsToInsert = registrationToNotify.player_ids.map(playerId => ({
+             ...playerNotification, user_id: playerId 
+        }));
+
+        await supabase.from('notifications').insert(notificationsToInsert);
         
-    }, [showToast]);
+    }, [showToast, tournaments]);
 
     const handleGenerateGroupsForTournament = useCallback(async (tournamentId: string) => {
         if (!supabase) return;
         const tournament = tournaments.find(t => t.id === tournamentId);
         if (!tournament) return;
 
-        const groups = createGroups(tournament.teams, tournament.teamsPerGroup);
+        const groups = createGroups(tournament.teams, tournament.teams_per_group);
         const updatedTournamentData = {
             ...tournament,
             data: { ...tournament.data, groups },

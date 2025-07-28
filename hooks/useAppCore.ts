@@ -1,8 +1,9 @@
 
 
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { UserProfileData, ClubProfileData, CourtData, PublicMatch, Ranking, ChatMessage, AppView, PlayerAppView, ClubAppView, Notification, NotificationType, ToastMessage, Booking, Database } from '../types';
+import { UserProfileData, ClubProfileData, CourtData, PublicMatch, Ranking, ChatMessage, AppView, PlayerAppView, ClubAppView, Notification, NotificationType, ToastMessage, Booking, Database, Tournament, Json } from '../types';
 
 // Helper to convert data URL to Blob for uploading
 const dataURLtoBlob = (dataurl: string) => {
@@ -33,7 +34,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
     const [publicMatches, setPublicMatches] = useState<PublicMatch[]>([]);
     const [rankings, setRankings] = useState<Ranking[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [initialTournaments, setInitialTournaments] = useState([]);
+    const [initialTournaments, setInitialTournaments] = useState<Tournament[]>([]);
     
     const [view, setView] = useState<AppView>('auth');
     const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
@@ -66,7 +67,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             ] = await Promise.all([
                 supabase.from('club_profiles').select('*'),
                 supabase.from('courts').select('*'),
-                supabase.from('tournaments').select('*'),
+                supabase.from('tournaments').select('*, tournament_registrations(*)'),
                 supabase.from('player_profiles').select('*'),
                 supabase.from('public_matches').select('*'),
                 supabase.from('rankings').select('*'),
@@ -241,7 +242,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         
         const validUrls = photoUrls.filter(url => url !== null) as string[];
         
-        const profileToInsert: Database['public']['Tables']['club_profiles']['Insert'] = {
+        const profileToInsert = {
             id: user.id,
             email: profile.email,
             member_id: profile.memberId,
@@ -265,7 +266,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
              return;
         }
 
-        const courtsToInsert: Database['public']['Tables']['courts']['Insert'][] = newCourts.map(court => ({
+        const courtsToInsert = newCourts.map(court => ({
             name: court.name,
             type: court.type,
             location: court.location,
@@ -294,9 +295,10 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             })
         );
         
-        await supabase.from('public_matches').update({ current_players: match.currentPlayers + 1 }).eq('id', matchId);
+        const update = { current_players: match.currentPlayers + 1 };
+        await supabase.from('public_matches').update(update).eq('id', matchId);
 
-        const newNotification: Database['public']['Tables']['notifications']['Insert'] = {
+        const newNotification = {
             type: 'match_join' as const,
             title: '¡Te has unido a un partido!',
             message: `Confirmada tu plaza en el partido de las ${match.time} en ${match.courtName}.`,
@@ -323,7 +325,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             timestamp: new Date().toISOString(),
             read: false
         };
-        const newMessageForDb: Database['public']['Tables']['messages']['Insert'] = {
+        const newMessageForDb = {
             conversation_id: selectedConversationId,
             sender_id: currentUserId,
             receiver_id: otherUserId,
@@ -333,11 +335,11 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         setMessages(prev => [...prev, newMessageForUI]);
         await supabase.from('messages').insert([newMessageForDb]);
 
-        const notification: Database['public']['Tables']['notifications']['Insert'] = {
+        const notification = {
             type: 'message' as const,
             title: `Nuevo mensaje de ${senderName}`,
             message: text,
-            link: { view: 'chat' as const, params: { conversationId: selectedConversationId } },
+            link: { view: 'chat' as const, params: { conversationId: selectedConversationId } } as Json,
             user_id: otherUserId,
         };
         await supabase.from('notifications').insert([notification]);
@@ -364,7 +366,8 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (userProfile) setUserProfile(prev => ({ ...prev!, notifications: markAsRead(prev!.notifications) }));
         if (loggedInClub) setLoggedInClub(prev => ({ ...prev!, notifications: markAsRead(prev!.notifications) }));
         
-        await supabase.from('notifications').update({ read: true }).eq('id', notification.id);
+        const update = { read: true };
+        await supabase.from('notifications').update(update).eq('id', notification.id);
 
         setIsNotificationsPanelOpen(false);
 
@@ -389,7 +392,8 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (userProfile) setUserProfile(prev => ({ ...prev!, notifications: markAllAsRead(prev!.notifications) }));
         if (loggedInClub) setLoggedInClub(prev => ({ ...prev!, notifications: markAllAsRead(prev!.notifications) }));
 
-        await supabase.from('notifications').update({ read: true }).eq('user_id', currentUserId).eq('read', false);
+        const update = { read: true };
+        await supabase.from('notifications').update(update).eq('user_id', currentUserId).eq('read', false);
     }, [userProfile, loggedInClub]);
 
     const handleAuthNavigate = (destination: 'player-login' | 'club-login' | 'player-signup' | 'club-signup') => {
@@ -414,7 +418,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             })
         );
         
-        const profileToUpdate: Database['public']['Tables']['club_profiles']['Update'] = {
+        const profileToUpdate = {
             name: updatedProfile.name,
             country: updatedProfile.country,
             state: updatedProfile.state,
@@ -468,7 +472,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             })
         );
         
-        const profileToUpdate: Database['public']['Tables']['player_profiles']['Update'] = {
+        const profileToUpdate = {
             first_name: updatedProfile.firstName,
             last_name: updatedProfile.lastName,
             sex: updatedProfile.sex,
@@ -519,13 +523,13 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             return;
         }
         
-        const newNotification: Database['public']['Tables']['notifications']['Insert'] = {
+        const newNotification = {
             type: 'friend_request' as const,
             title: 'Nueva solicitud de amistad',
             message: `${userProfile.firstName} ${userProfile.lastName} quiere ser tu amigo.`,
             user_id: toId,
             read: false,
-            payload: { fromId: userProfile.id }
+            payload: { fromId: userProfile.id } as Json,
         };
 
         const { error } = await supabase.from('notifications').insert([newNotification]);
@@ -540,9 +544,10 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!userProfile || !supabase) return;
 
         const updatedFriends = [...userProfile.friends, fromId];
+        const userUpdate = { friends: updatedFriends };
         const { error: userError } = await supabase
             .from('player_profiles')
-            .update({ friends: updatedFriends })
+            .update(userUpdate)
             .eq('id', userProfile.id);
 
         if (userError) {
@@ -553,7 +558,8 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const { data: otherUserData } = await supabase.from('player_profiles').select('friends').eq('id', fromId).single();
         if (otherUserData && otherUserData.friends) {
             const updatedOtherUserFriends = [...otherUserData.friends, userProfile.id];
-            await supabase.from('player_profiles').update({ friends: updatedOtherUserFriends }).eq('id', fromId);
+             const otherUserUpdate = { friends: updatedOtherUserFriends };
+            await supabase.from('player_profiles').update(otherUserUpdate).eq('id', fromId);
         }
 
         const notificationToRemove = userProfile.notifications.find(n => n.type === 'friend_request' && n.payload?.fromId === fromId);
@@ -569,7 +575,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
 
         const fromUser = allPlayers.find(p => p.id === fromId);
         if (fromUser) {
-            const acceptNotification: Database['public']['Tables']['notifications']['Insert'] = {
+            const acceptNotification = {
                 type: 'friend_accept' as const,
                 title: '¡Solicitud de amistad aceptada!',
                 message: `${userProfile.firstName} ${userProfile.lastName} ha aceptado tu solicitud.`,
@@ -596,7 +602,8 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!userProfile || !supabase || !window.confirm("¿Seguro que quieres eliminar a este amigo?")) return;
 
         const updatedFriends = userProfile.friends.filter(id => id !== friendId);
-        const { error: userError } = await supabase.from('player_profiles').update({ friends: updatedFriends }).eq('id', userProfile.id);
+        const userUpdate = { friends: updatedFriends };
+        const { error: userError } = await supabase.from('player_profiles').update(userUpdate).eq('id', userProfile.id);
 
         if (userError) {
             showToast({ text: `Error al eliminar amigo: ${userError.message}`, type: 'error'});
@@ -606,7 +613,8 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const { data: otherUserData } = await supabase.from('player_profiles').select('friends').eq('id', friendId).single();
         if (otherUserData && otherUserData.friends) {
             const updatedOtherUserFriends = (otherUserData.friends || []).filter((id: string) => id !== userProfile.id);
-            await supabase.from('player_profiles').update({ friends: updatedOtherUserFriends }).eq('id', friendId);
+            const otherUserUpdate = { friends: updatedOtherUserFriends };
+            await supabase.from('player_profiles').update(otherUserUpdate).eq('id', friendId);
         }
         
         setUserProfile(prev => ({...prev!, friends: updatedFriends}));

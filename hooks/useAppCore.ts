@@ -88,7 +88,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 const { data: messagesData } = await supabase.from('messages').select('*').or(`sender_id.eq.${session.user.id},receiver_id.eq.${session.user.id}`);
                 if (messagesData) setMessages(messagesData as any);
 
-                const { data: playerProfile } = await supabase.from('player_profiles').select('*, notifications(*)').eq('id', session.user.id).single();
+                const { data: playerProfile } = await supabase.from('player_profiles').select('*, notifications!user_id(*)').eq('id', session.user.id).single();
                 if (playerProfile) {
                     setUserProfile(playerProfile as any);
                     setLoggedInClub(null);
@@ -97,7 +97,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                     return;
                 }
 
-                const { data: clubProfile } = await supabase.from('club_profiles').select('*, notifications(*)').eq('id', session.user.id).single();
+                const { data: clubProfile } = await supabase.from('club_profiles').select('*, notifications!user_id(*)').eq('id', session.user.id).single();
                 if (clubProfile) {
                     setLoggedInClub(clubProfile as any);
                     setUserProfile(null);
@@ -544,7 +544,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             photos: finalPhotos.filter(p => p !== null) as string[],
         };
 
-        const { data, error } = await supabase.from('player_profiles').update(profileToUpdate).eq('id', userProfile.id).select('*, notifications(*)').single();
+        const { data, error } = await supabase.from('player_profiles').update(profileToUpdate).eq('id', userProfile.id).select('*, notifications!user_id(*)').single();
 
         if (error) {
             showToast({ text: `Error al actualizar el perfil: ${error.message}`, type: 'error'});
@@ -750,3 +750,4 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         activeNotifications,
     };
 }
+

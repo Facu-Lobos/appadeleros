@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Tournament, Team, Group, GroupMatch, UserProfileData, NotificationType, TournamentRegistration, ToastMessage, Ranking, Database, PlayerRankingEntry, Json } from '../types';
@@ -58,11 +59,11 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             date: tournament.date,
             status: tournament.status,
             format: tournament.format,
-            teams: tournament.teams,
+            teams: tournament.teams as Json,
             max_teams: tournament.max_teams,
             teams_per_group: tournament.teams_per_group,
-            data: tournament.data,
-            advancing_teams: tournament.advancing_teams || null,
+            data: tournament.data as Json,
+            advancing_teams: tournament.advancing_teams as Json | null,
         };
 
         const { data: dbData, error } = await supabase.from('tournaments').insert(tournamentToInsert).select('*, tournament_registrations(*)').single();
@@ -83,12 +84,12 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             date: updatedTournament.date,
             status: updatedTournament.status,
             format: updatedTournament.format,
-            teams: updatedTournament.teams,
-            data: updatedTournament.data,
+            teams: updatedTournament.teams as Json,
+            data: updatedTournament.data as Json,
             club_id: updatedTournament.club_id,
             max_teams: updatedTournament.max_teams,
             teams_per_group: updatedTournament.teams_per_group,
-            advancing_teams: updatedTournament.advancing_teams,
+            advancing_teams: updatedTournament.advancing_teams as Json,
         };
 
         const { data, error } = await supabase.from('tournaments').update(tournamentToUpdate).eq('id', updatedTournament.id).select('*, tournament_registrations(*)').single();
@@ -104,10 +105,10 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
                 const newRankings = updateRankingsWithPoints(rankings, points, newTournament.category);
 
                 const rankingsToUpsert: Database['public']['Tables']['rankings']['Insert'][] = newRankings
-                    .filter(r => playerPoints.size > 0 && r.category === newTournament.category) // Only upsert the affected category
+                    .filter(r => points.size > 0 && r.category === newTournament.category) // Only upsert the affected category
                     .map(r => ({
                         category: r.category,
-                        players: r.players,
+                        players: r.players as Json,
                     }));
                 
                 if (rankingsToUpsert.length > 0) {
@@ -149,7 +150,7 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             player_details: [
                 { id: userProfile.id, name: `${userProfile.first_name} ${userProfile.last_name}`, category: userProfile.category },
                 { id: partner.id, name: `${partner.first_name} ${partner.last_name}`, category: partner.category },
-            ],
+            ] as unknown as Json,
             status: 'pending',
         };
         
@@ -160,7 +161,7 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             return;
         }
         
-        const registrationData = data as TournamentRegistration;
+        const registrationData = data as unknown as TournamentRegistration;
 
         const tournamentToUpdate = tournaments.find(t => t.id === tournamentId);
         if (!tournamentToUpdate) return;
@@ -169,7 +170,7 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             type: 'tournament_registration' as const,
             title: 'Nueva inscripción a torneo',
             message: `El equipo '${teamName}' se ha inscrito en '${tournamentToUpdate.name}'.`,
-            link: { view: 'tournaments' as const, params: { tournamentId } },
+            link: { view: 'tournaments' as const, params: { tournamentId } } as unknown as Json,
             user_id: tournamentToUpdate.club_id,
             payload: null,
         };
@@ -190,7 +191,7 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             return;
         }
 
-        const registrationToNotify = updatedReg as TournamentRegistration;
+        const registrationToNotify = updatedReg as unknown as TournamentRegistration;
         let tournamentToUpdateLocally = tournaments.find(t => t.id === tournamentId);
         if(!tournamentToUpdateLocally) return;
 
@@ -200,7 +201,7 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
         
         if (status === 'approved') {
            updatedTeams = [...tournamentToUpdateLocally.teams, { id: registrationToNotify.id, name: registrationToNotify.team_name, playerIds: registrationToNotify.player_ids }];
-           const tournamentUpdate: Database['public']['Tables']['tournaments']['Update'] = { teams: updatedTeams };
+           const tournamentUpdate: Database['public']['Tables']['tournaments']['Update'] = { teams: updatedTeams as Json };
            await supabase.from('tournaments').update(tournamentUpdate).eq('id', tournamentId);
         }
         
@@ -211,7 +212,7 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             type: notificationType,
             title: `Inscripción a '${tournamentToUpdateLocally.name}' ${status === 'approved' ? 'Aprobada' : 'Rechazada'}`,
             message: `Tu inscripción para el equipo '${registrationToNotify.team_name}' ha sido ${status === 'approved' ? 'aprobada' : 'rechazada'}.`,
-            link: { view: 'tournaments' as const },
+            link: { view: 'tournaments' as const } as unknown as Json,
         };
 
         const notificationsToInsert: Database['public']['Tables']['notifications']['Insert'][] = registrationToNotify.player_ids.map(playerId => ({

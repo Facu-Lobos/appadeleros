@@ -1,4 +1,5 @@
 
+
 export enum BookingStatus {
   AVAILABLE = 'available',
   BOOKED = 'booked',
@@ -450,8 +451,8 @@ export interface Database {
           title: string
           message: string
           read: boolean
-          link: Notification['link'] | null
-          payload: Notification['payload'] | null
+          link: Json | null
+          payload: Json | null
         }
         Insert: {
           id?: number
@@ -461,8 +462,8 @@ export interface Database {
           title: string
           message: string
           read?: boolean
-          link?: Notification['link'] | null
-          payload?: Notification['payload'] | null
+          link?: Json | null
+          payload?: Json | null
         }
         Update: {
           id?: number
@@ -472,8 +473,8 @@ export interface Database {
           title?: string
           message?: string
           read?: boolean
-          link?: Notification['link'] | null
-          payload?: Notification['payload'] | null
+          link?: Json | null
+          payload?: Json | null
         }
       }
       player_profiles: {
@@ -490,9 +491,9 @@ export interface Database {
           category: string | null
           avatar_url: string | null
           photos: string[] | null
-          stats: UserProfileData['stats'] | null
-          upcoming_matches: UpcomingMatch[] | null
-          match_history: MatchStat[] | null
+          stats: Json | null
+          upcoming_matches: Json | null
+          match_history: Json | null
           friends: string[] | null
         }
         Insert: {
@@ -508,9 +509,9 @@ export interface Database {
           category?: string | null
           avatar_url?: string | null
           photos?: string[] | null
-          stats?: UserProfileData['stats'] | null
-          upcoming_matches?: UpcomingMatch[] | null
-          match_history?: MatchStat[] | null
+          stats?: Json | null
+          upcoming_matches?: Json | null
+          match_history?: Json | null
           friends?: string[] | null
         }
         Update: {
@@ -526,9 +527,9 @@ export interface Database {
           category?: string | null
           avatar_url?: string | null
           photos?: string[] | null
-          stats?: UserProfileData['stats'] | null
-          upcoming_matches?: UpcomingMatch[] | null
-          match_history?: MatchStat[] | null
+          stats?: Json | null
+          upcoming_matches?: Json | null
+          match_history?: Json | null
           friends?: string[] | null
         }
       }
@@ -575,19 +576,19 @@ export interface Database {
           id: number
           created_at: string
           category: string
-          players: PlayerRankingEntry[]
+          players: Json | null
         }
         Insert: {
           id?: number
           created_at?: string
           category: string
-          players: PlayerRankingEntry[]
+          players: Json | null
         }
         Update: {
           id?: number
           created_at?: string
           category?: string
-          players?: PlayerRankingEntry[]
+          players?: Json | null
         }
       }
       tournaments: {
@@ -600,11 +601,11 @@ export interface Database {
           date: string;
           status: string;
           format: string;
-          teams: Team[] | null;
+          teams: Json | null;
           max_teams: number;
           teams_per_group: number;
-          advancing_teams: Team[] | null;
-          data: Tournament['data'] | null;
+          advancing_teams: Json | null;
+          data: Json | null;
         };
         Insert: {
           id?: string;
@@ -615,11 +616,11 @@ export interface Database {
           date: string;
           status: string;
           format: string;
-          teams?: Team[] | null;
+          teams?: Json | null;
           max_teams: number;
           teams_per_group: number;
-          advancing_teams?: Team[] | null;
-          data?: Tournament['data'] | null;
+          advancing_teams?: Json | null;
+          data?: Json | null;
         };
         Update: {
           id?: string;
@@ -630,11 +631,11 @@ export interface Database {
           date?: string;
           status?: string;
           format?: string;
-          teams?: Team[] | null;
+          teams?: Json | null;
           max_teams?: number;
           teams_per_group?: number;
-          advancing_teams?: Team[] | null;
-          data?: Tournament['data'] | null;
+          advancing_teams?: Json | null;
+          data?: Json | null;
         };
       };
       tournament_registrations: {
@@ -644,7 +645,7 @@ export interface Database {
           tournament_id: string
           team_name: string
           player_ids: string[]
-          player_details: TournamentRegistration['player_details']
+          player_details: Json | null
           status: string
         }
         Insert: {
@@ -653,7 +654,7 @@ export interface Database {
           tournament_id: string
           team_name: string
           player_ids: string[]
-          player_details: TournamentRegistration['player_details']
+          player_details: Json | null
           status: string
         }
         Update: {
@@ -662,7 +663,7 @@ export interface Database {
           tournament_id?: string
           team_name?: string
           player_ids?: string[]
-          player_details?: TournamentRegistration['player_details']
+          player_details?: Json | null
           status?: string
         }
       }

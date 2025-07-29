@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { ClubProfileData, UserProfileData, DayOfWeek } from '../types';
 import { DAYS_OF_WEEK, LOCATIONS } from '../constants';
@@ -12,7 +13,7 @@ interface PlayerHomePageProps {
 const ClubCard: React.FC<{ club: ClubProfileData, onSelect: () => void }> = ({ club, onSelect }) => {
     const dayIndex = (new Date().getDay() + 6) % 7;
     const todayName = DAYS_OF_WEEK[dayIndex];
-    const isCurrentlyOpen = club.status === 'Abierto' && club.openingDays.includes(todayName);
+    const isCurrentlyOpen = club.status === 'Abierto' && club.opening_days.includes(todayName);
 
     return (
         <div 
@@ -81,7 +82,7 @@ const PlayerHomePage: React.FC<PlayerHomePageProps> = ({
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold text-white">Hola, {userProfile.firstName}</h1>
+                <h1 className="text-3xl font-bold text-white">Hola, {userProfile.first_name}</h1>
                 <p className="text-light-secondary mt-1">Explora clubes de pádel donde quieras.</p>
             </div>
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ChatMessage, UserProfileData, ClubProfileData } from '../types';
 
@@ -59,9 +60,9 @@ const ConversationPage: React.FC<ConversationPageProps> = ({ conversationId, mes
         );
     }
     
-    const isPlayer = (user: any): user is UserProfileData => 'firstName' in user;
-    const name = isPlayer(otherUser) ? `${otherUser.firstName} ${otherUser.lastName}` : otherUser.name;
-    const avatarUrl = isPlayer(otherUser) ? otherUser.avatarUrl : `https://api.dicebear.com/8.x/initials/svg?seed=${otherUser.name}`;
+    const isPlayer = (user: any): user is UserProfileData => 'first_name' in user;
+    const name = isPlayer(otherUser) ? `${otherUser.first_name} ${otherUser.last_name}` : otherUser.name;
+    const avatarUrl = isPlayer(otherUser) ? otherUser.avatar_url : `https://api.dicebear.com/8.x/initials/svg?seed=${otherUser.name}`;
 
     return (
         <div className="flex flex-col h-[calc(100vh-200px)] max-h-[800px] bg-dark-secondary rounded-lg">

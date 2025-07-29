@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CourtData, TimeSlotData, BookingStatus, PlayerCategory, UserProfileData } from '../types';
 
@@ -12,7 +13,7 @@ interface BookingModalProps {
 }
 
 const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, onConfirm, onCancelBooking, slotData, court, userProfile }) => {
-    const [playerName, setPlayerName] = useState(userProfile ? `${userProfile.firstName} ${userProfile.lastName}`: '');
+    const [playerName, setPlayerName] = useState(userProfile ? `${userProfile.first_name} ${userProfile.last_name}`: '');
     const [bookingType, setBookingType] = useState<'single' | 'fixed'>('single');
     
     if (!isOpen) return null;

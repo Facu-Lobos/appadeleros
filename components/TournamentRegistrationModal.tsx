@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Tournament, UserProfileData } from '../types';
 
@@ -11,7 +12,7 @@ interface TournamentRegistrationModalProps {
 }
 
 const TournamentRegistrationModal: React.FC<TournamentRegistrationModalProps> = ({ isOpen, onClose, onConfirm, tournament, currentUser, allPlayers }) => {
-    const [teamName, setTeamName] = useState(`${currentUser.lastName} / `);
+    const [teamName, setTeamName] = useState(`${currentUser.last_name} / `);
     const [partnerId, setPartnerId] = useState('');
     const [error, setError] = useState('');
 
@@ -66,19 +67,19 @@ const TournamentRegistrationModal: React.FC<TournamentRegistrationModalProps> = 
                             onChange={(e) => {
                                 setPartnerId(e.target.value);
                                 const p = allPlayers.find(player => player.id === e.target.value);
-                                setTeamName(`${currentUser.lastName} / ${p ? p.lastName : ''}`);
+                                setTeamName(`${currentUser.last_name} / ${p ? p.last_name : ''}`);
                             }}
                             className="w-full bg-dark-tertiary border border-dark-tertiary rounded-md p-3 focus:ring-2 focus:ring-primary focus:outline-none"
                         >
                             <option value="">Selecciona un amigo...</option>
                             {friends.map(friend => (
-                                <option key={friend.id} value={friend.id}>{friend.firstName} {friend.lastName} ({friend.category})</option>
+                                <option key={friend.id} value={friend.id}>{friend.first_name} {friend.last_name} ({friend.category})</option>
                             ))}
                         </select>
                          {friends.length === 0 && <p className="text-xs text-yellow-400 mt-1">No tienes amigos para invitar. ¡Añade amigos desde la pestaña Comunidad!</p>}
                     </div>
                     <div>
-                        <p className="text-sm text-light-secondary">Tu capitán eres tú: <span className="font-bold text-white">{currentUser.firstName} {currentUser.lastName} ({currentUser.category})</span></p>
+                        <p className="text-sm text-light-secondary">Tu capitán eres tú: <span className="font-bold text-white">{currentUser.first_name} {currentUser.last_name} ({currentUser.category})</span></p>
                     </div>
                 </div>
 

@@ -1,6 +1,8 @@
 
 
 
+
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { PlayerSuggestion, UserProfileData } from '../types';
 
@@ -50,7 +52,7 @@ export const findMatch = async (userProfile: UserProfileData): Promise<PlayerSug
         Tu misión es encontrar 3 compañeros de pádel ficticios perfectos para nuestro usuario. Sé creativo y dales personalidades únicas.
 
         Aquí está el perfil de nuestro usuario:
-        - Nombre: ${userProfile.firstName}
+        - Nombre: ${userProfile.first_name}
         - Sexo: ${userProfile.sex}
         - Categoría: ${userProfile.category}
         - Disponibilidad: ${userProfile.availability.join(', ')}

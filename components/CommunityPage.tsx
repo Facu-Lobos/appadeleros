@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { UserProfileData, ClubProfileData } from '../types';
 import { MagnifyingGlassIcon, BuildingStorefrontIcon } from '../constants';
@@ -13,14 +14,14 @@ interface CommunityPageProps {
 
 const CommunityPage: React.FC<CommunityPageProps> = ({ currentUser, allPlayers, allClubs, onSendFriendRequest, onStartChat }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const isClubView = 'memberId' in currentUser;
+    const isClubView = 'member_id' in currentUser;
     const isPlayerView = !isClubView;
 
     const filteredPlayers = useMemo(() => {
         if (!searchTerm) return [];
         return allPlayers.filter(p =>
             p.id !== currentUser.id &&
-            `${p.firstName} ${p.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
+            `${p.first_name} ${p.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [searchTerm, allPlayers, currentUser.id]);
 
@@ -82,9 +83,9 @@ const CommunityPage: React.FC<CommunityPageProps> = ({ currentUser, allPlayers, 
                                     const status = getFriendshipStatus(player);
                                     return (
                                         <div key={player.id} className="flex items-center gap-4 bg-dark-secondary p-3 rounded-lg">
-                                            <img src={player.avatarUrl} alt={player.firstName} className="w-12 h-12 rounded-full object-cover" />
+                                            <img src={player.avatar_url} alt={player.first_name} className="w-12 h-12 rounded-full object-cover" />
                                             <div className="flex-1">
-                                                <p className="font-bold text-white">{player.firstName} {player.lastName}</p>
+                                                <p className="font-bold text-white">{player.first_name} {player.last_name}</p>
                                                 <p className="text-sm text-light-secondary">Categoría: {player.category}</p>
                                             </div>
                                             {isClubView ? (

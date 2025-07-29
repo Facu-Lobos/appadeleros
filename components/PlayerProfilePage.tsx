@@ -4,6 +4,7 @@
 
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfileData, PlayerCategory, PlayerAvailability } from '../types';
 import { PLAYER_CATEGORIES, LOCATIONS, EllipsisVerticalIcon, ChatBubbleIcon, TrashIcon } from '../constants';
@@ -114,7 +115,7 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             const base64 = await fileToBase64(file);
-            setEditedProfile(prev => ({...prev, avatarUrl: base64}));
+            setEditedProfile(prev => ({...prev, avatar_url: base64}));
         }
     };
     
@@ -155,15 +156,15 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
                 {/* Avatar and Name */}
                 <div className="flex items-center gap-4">
                     <div className="relative">
-                       <img src={editedProfile.avatarUrl} alt="Avatar" className="w-24 h-24 rounded-full bg-dark-tertiary border-2 border-primary object-cover" />
+                       <img src={editedProfile.avatar_url} alt="Avatar" className="w-24 h-24 rounded-full bg-dark-tertiary border-2 border-primary object-cover" />
                        <input type="file" ref={avatarInputRef} onChange={handleAvatarFileChange} accept="image/*" className="hidden" />
                        <button onClick={() => avatarInputRef.current?.click()} className="absolute bottom-0 right-0 bg-primary text-dark-primary rounded-full p-1.5">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
                        </button>
                     </div>
                      <div className="flex-1 space-y-2">
-                        <input type="text" name="firstName" value={editedProfile.firstName} onChange={handleInputChange} placeholder="Nombre" className="w-full bg-dark-tertiary border border-dark-tertiary rounded-md p-2 focus:ring-2 focus:ring-primary focus:outline-none" />
-                        <input type="text" name="lastName" value={editedProfile.lastName} onChange={handleInputChange} placeholder="Apellido" className="w-full bg-dark-tertiary border border-dark-tertiary rounded-md p-2 focus:ring-2 focus:ring-primary focus:outline-none" />
+                        <input type="text" name="first_name" value={editedProfile.first_name} onChange={handleInputChange} placeholder="Nombre" className="w-full bg-dark-tertiary border border-dark-tertiary rounded-md p-2 focus:ring-2 focus:ring-primary focus:outline-none" />
+                        <input type="text" name="last_name" value={editedProfile.last_name} onChange={handleInputChange} placeholder="Apellido" className="w-full bg-dark-tertiary border border-dark-tertiary rounded-md p-2 focus:ring-2 focus:ring-primary focus:outline-none" />
                     </div>
                 </div>
 
@@ -239,10 +240,10 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
                     <div className="flex gap-4 flex-col items-center">
                         <div
                             className="bg-center bg-no-repeat aspect-square bg-cover rounded-full min-h-32 w-32 border-2 border-primary"
-                            style={{ backgroundImage: `url("${profile.avatarUrl}")` }}
+                            style={{ backgroundImage: `url("${profile.avatar_url}")` }}
                         ></div>
                         <div className="flex flex-col items-center justify-center">
-                            <p className="text-white text-[22px] font-bold leading-tight tracking-[-0.015em] text-center">{profile.firstName} {profile.lastName}</p>
+                            <p className="text-white text-[22px] font-bold leading-tight tracking-[-0.015em] text-center">{profile.first_name} {profile.last_name}</p>
                             <p className="text-light-secondary text-base font-normal leading-normal text-center">Categoría: {profile.category} | {profile.city}, {profile.state}</p>
                         </div>
                     </div>
@@ -280,9 +281,9 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
                             if (!friend) return null;
                             return (
                                 <div key={friendId} className="flex items-center gap-4 bg-dark-secondary p-3 rounded-lg">
-                                    <img src={friend.avatarUrl} alt={friend.firstName} className="w-12 h-12 rounded-full object-cover" />
+                                    <img src={friend.avatar_url} alt={friend.first_name} className="w-12 h-12 rounded-full object-cover" />
                                     <div className="flex-1">
-                                        <p className="font-bold text-white">{friend.firstName} {friend.lastName}</p>
+                                        <p className="font-bold text-white">{friend.first_name} {friend.last_name}</p>
                                         <p className="text-sm text-light-secondary">Categoría: {friend.category}</p>
                                     </div>
                                     <div className="relative" ref={openMenu === friendId ? menuRef : null}>
@@ -334,7 +335,7 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
 
             {/* Match History */}
             <h2 className="text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Historial de Partidos</h2>
-            {profile.matchHistory.map((match, index) => (
+            {profile.match_history && profile.match_history.map((match, index) => (
                  <div key={index} className="flex items-center gap-4 bg-dark-secondary p-3 mx-4 rounded-lg mb-2">
                     <div
                         className="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-14"

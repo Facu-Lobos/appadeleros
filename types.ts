@@ -286,8 +286,8 @@ export type Json =
   | number
   | boolean
   | null
-  | { [key: string]: any }
-  | any[]
+  | { [key: string]: Json }
+  | Json[]
 
 export interface Database {
   public: {

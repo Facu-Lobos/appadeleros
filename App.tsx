@@ -151,7 +151,7 @@ export const App: React.FC = () => {
                 <BottomNavBar 
                     activeView={core.playerView} 
                     setView={core.setPlayerView} 
-                    unreadMessageCount={core.messages.filter(m => m.receiverId === core.userProfile?.id && !m.read).length} 
+                    unreadMessageCount={core.messages.filter(m => m.receiver_id === core.userProfile?.id && !m.read).length} 
                 />
                  {bookings.isModalOpen && bookings.selectedSlot && (
                     <BookingModal 

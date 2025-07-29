@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { UserProfileData, ClubProfileData, CourtData, PublicMatch, Ranking, ChatMessage, AppView, PlayerAppView, ClubAppView, Notification, NotificationType, ToastMessage, Booking, Database, Tournament, Json } from '../types';
@@ -86,7 +87,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             if (session) {
                 // Fetch user-specific data upon login
                 const { data: messagesData } = await supabase.from('messages').select('*').or(`sender_id.eq.${session.user.id},receiver_id.eq.${session.user.id}`);
-                if (messagesData) setMessages(messagesData as any as ChatMessage[]);
+                if (messagesData) setMessages(messagesData as ChatMessage[]);
 
                 const { data: playerProfile } = await supabase.from('player_profiles').select('*, notifications(*)').eq('id', session.user.id).single();
                 if (playerProfile) {
@@ -134,7 +135,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 table: 'messages', 
                 filter: `receiver_id=eq.${currentUserId}` 
             }, (payload) => {
-                setMessages(prev => [...prev, payload.new as any as ChatMessage]);
+                setMessages(prev => [...prev, payload.new as ChatMessage]);
             })
             .subscribe();
 
@@ -258,7 +259,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             photos: validUrls,
         };
 
-        const { error: profileError } = await supabase.from('club_profiles').insert([profileToInsert]);
+        const { error: profileError } = await supabase.from('club_profiles').insert([profileToInsert] as any);
         if (profileError) {
              showToast({ text: `Falló la creación del perfil: ${profileError.message}`, type: 'error'});
              return;
@@ -272,7 +273,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             club_id: user.id,
             club_name: profile.name
         }));
-        const { error: courtsError } = await supabase.from('courts').insert(courtsToInsert);
+        const { error: courtsError } = await supabase.from('courts').insert(courtsToInsert as any);
         if (courtsError) {
              showToast({ text: `Falló la creación de las pistas: ${courtsError.message}`, type: 'error'});
         }
@@ -294,7 +295,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         );
         
         const update = { current_players: match.currentPlayers + 1 };
-        await supabase.from('public_matches').update(update).eq('id', matchId);
+        await supabase.from('public_matches').update(update as any).eq('id', matchId);
 
         const newNotification = {
             type: 'match_join' as const,
@@ -302,7 +303,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             message: `Confirmada tu plaza en el partido de las ${match.time} en ${match.courtName}.`,
             user_id: userProfile.id,
         };
-        await supabase.from('notifications').insert([newNotification]);
+        await supabase.from('notifications').insert([newNotification] as any);
         showToast({ text: "Te has unido al partido.", type: 'success' });
 
     }, [userProfile, publicMatches, showToast]);
@@ -316,11 +317,11 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         
         const newMessageForUI: ChatMessage = {
             id: Date.now(),
-            conversationId: selectedConversationId,
-            senderId: currentUserId,
-            receiverId: otherUserId,
+            conversation_id: selectedConversationId,
+            sender_id: currentUserId,
+            receiver_id: otherUserId,
             text,
-            timestamp: new Date().toISOString(),
+            created_at: new Date().toISOString(),
             read: false
         };
         const newMessageForDb = {
@@ -331,7 +332,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         };
 
         setMessages(prev => [...prev, newMessageForUI]);
-        await supabase.from('messages').insert([newMessageForDb]);
+        await supabase.from('messages').insert([newMessageForDb] as any);
 
         const notification = {
             type: 'message' as const,
@@ -340,7 +341,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             link: { view: 'chat' as const, params: { conversationId: selectedConversationId } } as Json,
             user_id: otherUserId,
         };
-        await supabase.from('notifications').insert([notification]);
+        await supabase.from('notifications').insert([notification] as any);
         
     }, [selectedConversationId, userProfile, loggedInClub, allPlayers, allClubs]);
 
@@ -348,7 +349,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!window.confirm('¿Estás seguro de que quieres eliminar esta conversación? Esta acción es irreversible.') || !supabase) {
             return;
         }
-        setMessages(prev => prev.filter(msg => msg.conversationId !== conversationId));
+        setMessages(prev => prev.filter(msg => msg.conversation_id !== conversationId));
         await supabase.from('messages').delete().eq('conversation_id', conversationId);
         
         if (selectedConversationId === conversationId) {
@@ -365,7 +366,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (loggedInClub) setLoggedInClub(prev => ({ ...prev!, notifications: markAsRead(prev!.notifications) }));
         
         const update = { read: true };
-        await supabase.from('notifications').update(update).eq('id', notification.id);
+        await supabase.from('notifications').update(update as any).eq('id', notification.id);
 
         setIsNotificationsPanelOpen(false);
 
@@ -391,7 +392,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (loggedInClub) setLoggedInClub(prev => ({ ...prev!, notifications: markAllAsRead(prev!.notifications) }));
 
         const update = { read: true };
-        await supabase.from('notifications').update(update).eq('user_id', currentUserId).eq('read', false);
+        await supabase.from('notifications').update(update as any).eq('user_id', currentUserId).eq('read', false);
     }, [userProfile, loggedInClub]);
 
     const handleAuthNavigate = (destination: 'player-login' | 'club-login' | 'player-signup' | 'club-signup') => {
@@ -430,7 +431,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             photos: finalPhotos.filter(p => p !== null) as string[],
         };
 
-        const { data, error } = await supabase.from('club_profiles').update(profileToUpdate).eq('id', loggedInClub.id).select().single();
+        const { data, error } = await supabase.from('club_profiles').update(profileToUpdate as any).eq('id', loggedInClub.id).select().single();
 
         if (error) {
             showToast({ text: `Error al actualizar el perfil: ${error.message}`, type: 'error'});
@@ -483,7 +484,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             photos: finalPhotos.filter(p => p !== null) as string[],
         };
 
-        const { data, error } = await supabase.from('player_profiles').update(profileToUpdate).eq('id', userProfile.id).select('*, notifications(*)').single();
+        const { data, error } = await supabase.from('player_profiles').update(profileToUpdate as any).eq('id', userProfile.id).select('*, notifications(*)').single();
 
         if (error) {
             showToast({ text: `Error al actualizar el perfil: ${error.message}`, type: 'error'});
@@ -530,7 +531,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             payload: { fromId: userProfile.id } as Json,
         };
 
-        const { error } = await supabase.from('notifications').insert([newNotification]);
+        const { error } = await supabase.from('notifications').insert([newNotification] as any);
         if (error) {
             showToast({ text: `Error al enviar la solicitud: ${error.message}`, type: 'error'});
         } else {
@@ -545,7 +546,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const userUpdate = { friends: updatedFriends };
         const { error: userError } = await supabase
             .from('player_profiles')
-            .update(userUpdate)
+            .update(userUpdate as any)
             .eq('id', userProfile.id);
 
         if (userError) {
@@ -557,7 +558,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (otherUserData && otherUserData.friends) {
             const updatedOtherUserFriends = [...otherUserData.friends, userProfile.id];
              const otherUserUpdate = { friends: updatedOtherUserFriends };
-            await supabase.from('player_profiles').update(otherUserUpdate).eq('id', fromId);
+            await supabase.from('player_profiles').update(otherUserUpdate as any).eq('id', fromId);
         }
 
         const notificationToRemove = userProfile.notifications.find(n => n.type === 'friend_request' && n.payload?.fromId === fromId);
@@ -579,7 +580,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 message: `${userProfile.firstName} ${userProfile.lastName} ha aceptado tu solicitud.`,
                 user_id: fromId,
             };
-            await supabase.from('notifications').insert([acceptNotification]);
+            await supabase.from('notifications').insert([acceptNotification] as any);
         }
     }, [userProfile, allPlayers, showToast]);
     
@@ -601,7 +602,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
 
         const updatedFriends = userProfile.friends.filter(id => id !== friendId);
         const userUpdate = { friends: updatedFriends };
-        const { error: userError } = await supabase.from('player_profiles').update(userUpdate).eq('id', userProfile.id);
+        const { error: userError } = await supabase.from('player_profiles').update(userUpdate as any).eq('id', userProfile.id);
 
         if (userError) {
             showToast({ text: `Error al eliminar amigo: ${userError.message}`, type: 'error'});
@@ -612,7 +613,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (otherUserData && otherUserData.friends) {
             const updatedOtherUserFriends = (otherUserData.friends || []).filter((id: string) => id !== userProfile.id);
             const otherUserUpdate = { friends: updatedOtherUserFriends };
-            await supabase.from('player_profiles').update(otherUserUpdate).eq('id', friendId);
+            await supabase.from('player_profiles').update(otherUserUpdate as any).eq('id', friendId);
         }
         
         setUserProfile(prev => ({...prev!, friends: updatedFriends}));

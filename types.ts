@@ -1,4 +1,5 @@
 
+
 export enum BookingStatus {
   AVAILABLE = 'available',
   BOOKED = 'booked',
@@ -216,11 +217,11 @@ export interface Ranking {
 // --- Chat Types ---
 export interface ChatMessage {
   id: number;
-  conversationId: string;
-  senderId: string; // 'player-alex', 'club-1', etc.
-  receiverId: string;
+  conversation_id: string;
+  sender_id: string;
+  receiver_id: string;
   text: string;
-  timestamp: string; // ISO string
+  created_at: string; // ISO string
   read?: boolean;
 }
 
@@ -681,5 +682,3 @@ export interface Database {
     }
   }
 }
-
-

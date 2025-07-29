@@ -16,18 +16,18 @@ const ConversationPage: React.FC<ConversationPageProps> = ({ conversationId, mes
 
     const conversationMessages = useMemo(() => {
         return messages
-            .filter(m => m.conversationId === conversationId)
-            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+            .filter(m => m.conversation_id === conversationId)
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     }, [messages, conversationId]);
 
     const otherUserId = useMemo(() => {
         // Find a message in the conversation to determine the other user
-        const messageInConversation = messages.find(m => m.conversationId === conversationId);
+        const messageInConversation = messages.find(m => m.conversation_id === conversationId);
         if (!messageInConversation) {
             // Fallback for new conversations initiated by current user
             return conversationId.replace(currentUserId, '').replace('_', '');
         }
-        return messageInConversation.senderId === currentUserId ? messageInConversation.receiverId : messageInConversation.senderId;
+        return messageInConversation.sender_id === currentUserId ? messageInConversation.receiver_id : messageInConversation.sender_id;
     }, [conversationId, messages, currentUserId]);
     
     const otherUser = useMemo(() => {
@@ -77,9 +77,9 @@ const ConversationPage: React.FC<ConversationPageProps> = ({ conversationId, mes
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {conversationMessages.map(msg => (
-                    <div key={msg.id} className={`flex items-end gap-2 ${msg.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}>
-                        {msg.senderId !== currentUserId && <img src={avatarUrl} className="w-6 h-6 rounded-full" />}
-                        <div className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl ${msg.senderId === currentUserId ? 'bg-primary text-dark-primary rounded-br-none' : 'bg-dark-tertiary text-white rounded-bl-none'}`}>
+                    <div key={msg.id} className={`flex items-end gap-2 ${msg.sender_id === currentUserId ? 'justify-end' : 'justify-start'}`}>
+                        {msg.sender_id !== currentUserId && <img src={avatarUrl} className="w-6 h-6 rounded-full" />}
+                        <div className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl ${msg.sender_id === currentUserId ? 'bg-primary text-dark-primary rounded-br-none' : 'bg-dark-tertiary text-white rounded-bl-none'}`}>
                             <p>{msg.text}</p>
                         </div>
                     </div>

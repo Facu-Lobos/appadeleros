@@ -30,13 +30,13 @@ const ChatListPage: React.FC<ChatListPageProps> = ({ messages, currentUserId, al
         const convos: { [key: string]: ChatMessage } = {};
 
         messages.forEach(msg => {
-            const lastMessage = convos[msg.conversationId];
-            if (!lastMessage || new Date(msg.timestamp) > new Date(lastMessage.timestamp)) {
-                convos[msg.conversationId] = msg;
+            const lastMessage = convos[msg.conversation_id];
+            if (!lastMessage || new Date(msg.created_at) > new Date(lastMessage.created_at)) {
+                convos[msg.conversation_id] = msg;
             }
         });
 
-        return Object.values(convos).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        return Object.values(convos).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }, [messages]);
 
     const getUserDetails = (userId: string) => {
@@ -58,7 +58,7 @@ const ChatListPage: React.FC<ChatListPageProps> = ({ messages, currentUserId, al
                 </div>
             ) : (
                 conversations.map(lastMessage => {
-                    const otherUserId = lastMessage.senderId === currentUserId ? lastMessage.receiverId : lastMessage.senderId;
+                    const otherUserId = lastMessage.sender_id === currentUserId ? lastMessage.receiver_id : lastMessage.sender_id;
                     const otherUser = getUserDetails(otherUserId);
                     const isPlayer = (user: any): user is UserProfileData => 'firstName' in user;
 
@@ -67,12 +67,12 @@ const ChatListPage: React.FC<ChatListPageProps> = ({ messages, currentUserId, al
 
                     return (
                         <div 
-                            key={lastMessage.conversationId} 
+                            key={lastMessage.conversation_id} 
                             className="flex items-center gap-4 bg-dark-secondary p-3 rounded-lg group"
                         >
                            <div 
                                 className="flex-1 flex items-center gap-4 overflow-hidden cursor-pointer"
-                                onClick={() => onSelectConversation(lastMessage.conversationId)}
+                                onClick={() => onSelectConversation(lastMessage.conversation_id)}
                             >
                                 <img src={avatarUrl} alt={name} className="w-14 h-14 rounded-full bg-dark-primary object-cover" />
                                 <div className="flex-1 overflow-hidden">
@@ -80,11 +80,11 @@ const ChatListPage: React.FC<ChatListPageProps> = ({ messages, currentUserId, al
                                     <p className="text-sm text-light-secondary truncate">{lastMessage.text}</p>
                                 </div>
                            </div>
-                            <div className="relative" ref={openMenuId === lastMessage.conversationId ? menuRef : null}>
+                            <div className="relative" ref={openMenuId === lastMessage.conversation_id ? menuRef : null}>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        setOpenMenuId(openMenuId === lastMessage.conversationId ? null : lastMessage.conversationId);
+                                        setOpenMenuId(openMenuId === lastMessage.conversation_id ? null : lastMessage.conversation_id);
                                     }}
                                     className="p-2 text-slate-400 hover:text-white rounded-full transition-colors"
                                     aria-label="Opciones de conversación"
@@ -92,11 +92,11 @@ const ChatListPage: React.FC<ChatListPageProps> = ({ messages, currentUserId, al
                                     <EllipsisVerticalIcon className="w-5 h-5" />
                                 </button>
 
-                                {openMenuId === lastMessage.conversationId && (
+                                {openMenuId === lastMessage.conversation_id && (
                                     <div className="absolute right-0 bottom-full mb-1 w-48 bg-dark-tertiary rounded-md shadow-lg z-20 border border-slate-700/50">
                                         <div className="py-1">
                                             <button
-                                                onClick={(e) => handleDeleteClick(e, lastMessage.conversationId)}
+                                                onClick={(e) => handleDeleteClick(e, lastMessage.conversation_id)}
                                                 className="flex items-center gap-3 w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-700/30 transition-colors"
                                             >
                                               <TrashIcon className="h-4 w-4" />

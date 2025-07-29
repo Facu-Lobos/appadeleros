@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
     // Prepara las variables que se inyectarán en la aplicación.
     // Se da prioridad a las variables de entorno del proceso de build (ej. Vercel)
     // y se usa el .env local como alternativa para desarrollo.
-    const apiKey = process.env.API_KEY || fileEnv.API_KEY;
+    const apiKey = process.env.VITE_GEMINI_API_KEY || fileEnv.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || fileEnv.GEMINI_API_KEY;
     const supabaseUrl = process.env.SUPABASE_URL || fileEnv.SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || fileEnv.SUPABASE_ANON_KEY;
     

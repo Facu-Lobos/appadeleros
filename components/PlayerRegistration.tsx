@@ -4,7 +4,7 @@ import { UserProfileData, PlayerCategory, PlayerSex, PlayerAvailability } from '
 import { PLAYER_CATEGORIES, LOCATIONS } from '../constants';
 
 interface PlayerRegistrationProps {
-    onRegister: (profile: Omit<UserProfileData, 'id' | 'avatarUrl' | 'photos' | 'stats' | 'upcomingMatches' | 'matchHistory' | 'friends' | 'friendRequests' | 'notifications'>) => void;
+    onRegister: (profile: Omit<UserProfileData, 'id' | 'avatar_url' | 'photos' | 'stats' | 'upcoming_matches' | 'match_history' | 'friends' | 'friendRequests' | 'notifications'>) => void;
     onBack: () => void;
 }
 
@@ -65,8 +65,8 @@ const PlayerRegistration: React.FC<PlayerRegistrationProps> = ({ onRegister, onB
             onRegister({
                 email,
                 password,
-                firstName,
-                lastName,
+                first_name: firstName,
+                last_name: lastName,
                 sex,
                 category,
                 country,

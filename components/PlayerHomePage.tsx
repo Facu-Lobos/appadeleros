@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo } from 'react';
 import { ClubProfileData, UserProfileData, DayOfWeek } from '../types';
 import { DAYS_OF_WEEK, LOCATIONS } from '../constants';

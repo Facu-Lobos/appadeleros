@@ -1,7 +1,4 @@
 
-
-
-
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { UserProfileData, ClubProfileData, CourtData, PublicMatch, Ranking, ChatMessage, AppView, PlayerAppView, ClubAppView, Notification, NotificationType, ToastMessage, Booking, Database, Tournament, Json } from '../types';
@@ -191,24 +188,70 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         // onAuthStateChange handles success and checks if user is a club
     }, [showToast]);
 
-     const handlePlayerRegister = async (profileData: Omit<UserProfileData, 'id' | 'avatarUrl' | 'photos' | 'stats' | 'upcomingMatches' | 'matchHistory' | 'friends' | 'friendRequests' | 'notifications'>) => {
+    const handlePlayerRegister = async (profileData: Omit<UserProfileData, 'id' | 'avatar_url' | 'photos' | 'stats' | 'upcoming_matches' | 'match_history' | 'friends' | 'friendRequests' | 'notifications'>) => {
         if (!supabase) return;
         const { email, password, ...metaData } = profileData;
-        const { error } = await supabase.auth.signUp({
+
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
             email: email!,
             password: password!,
             options: {
                 data: {
-                    ...metaData,
-                    first_name: metaData.firstName,
-                    last_name: metaData.lastName,
-                    avatar_url: `https://api.dicebear.com/8.x/initials/svg?seed=${metaData.firstName}+${metaData.lastName}`,
+                    first_name: metaData.first_name,
+                    last_name: metaData.last_name,
                     role: 'player'
                 }
             }
         });
-        if (error) showToast({ text: error.message, type: 'error'});
-        // The trigger on Supabase should create the profile, and onAuthStateChange will log the user in.
+
+        if (signUpError) {
+            showToast({ text: signUpError.message, type: 'error' });
+            return;
+        }
+        if (!authData.user) {
+            showToast({ text: "El registro falló, por favor intenta de nuevo.", type: 'error' });
+            return;
+        }
+
+        const profileToInsert: Database['public']['Tables']['player_profiles']['Insert'] = {
+            id: authData.user.id,
+            email: email,
+            first_name: metaData.first_name,
+            last_name: metaData.last_name,
+            sex: metaData.sex,
+            country: metaData.country,
+            state: metaData.state,
+            city: metaData.city,
+            availability: metaData.availability,
+            category: metaData.category,
+            avatar_url: `https://api.dicebear.com/8.x/initials/svg?seed=${metaData.first_name}+${metaData.last_name}`,
+            photos: [],
+            stats: { matches: 0, wins: 0, losses: 0, winRate: 0, last30DaysTrend: 0 },
+            upcoming_matches: [],
+            match_history: [],
+            friends: [],
+        };
+
+        const { error: profileError } = await supabase.from('player_profiles').insert(profileToInsert);
+
+        if (profileError) {
+            showToast({ text: `Falló la creación del perfil: ${profileError.message}`, type: 'error' });
+            return;
+        }
+
+        const welcomeNotification: Database['public']['Tables']['notifications']['Insert'] = {
+            user_id: authData.user.id,
+            type: 'welcome',
+            title: '¡Bienvenido/a a APPadeleros!',
+            message: 'Explora la app, busca clubes y encuentra tu próximo partido.',
+            read: false,
+            link: null,
+            payload: null,
+        };
+        await supabase.from('notifications').insert(welcomeNotification);
+
+        showToast({ text: "¡Registro exitoso! Revisa tu email para confirmar tu cuenta.", type: 'success' });
+        setView('auth');
     };
 
     const handleClubRegister = async (profile: ClubProfileData, newCourts: CourtData[], photoFiles: File[]) => {
@@ -243,31 +286,31 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         
         const validUrls = photoUrls.filter(url => url !== null) as string[];
         
-        const profileToInsert = {
+        const profileToInsert: Database['public']['Tables']['club_profiles']['Insert'] = {
             id: user.id,
             email: profile.email,
-            member_id: profile.memberId,
+            member_id: profile.member_id,
             name: profile.name,
             country: profile.country,
             state: profile.state,
             city: profile.city,
             total_courts: newCourts.length,
-            opening_time: profile.openingTime,
-            closing_time: profile.closingTime,
-            opening_days: profile.openingDays,
+            opening_time: profile.opening_time,
+            closing_time: profile.closing_time,
+            opening_days: profile.opening_days,
             status: profile.status,
-            turn_duration: profile.turnDuration,
-            has_buffet: profile.hasBuffet,
+            turn_duration: profile.turn_duration,
+            has_buffet: profile.has_buffet,
             photos: validUrls,
         };
 
-        const { error: profileError } = await supabase.from('club_profiles').insert([profileToInsert]);
+        const { error: profileError } = await supabase.from('club_profiles').insert(profileToInsert);
         if (profileError) {
              showToast({ text: `Falló la creación del perfil: ${profileError.message}`, type: 'error'});
              return;
         }
 
-        const courtsToInsert = newCourts.map(court => ({
+        const courtsToInsert: Database['public']['Tables']['courts']['Insert'][] = newCourts.map(court => ({
             name: court.name,
             type: court.type,
             location: court.location,
@@ -278,6 +321,18 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const { error: courtsError } = await supabase.from('courts').insert(courtsToInsert);
         if (courtsError) {
              showToast({ text: `Falló la creación de las pistas: ${courtsError.message}`, type: 'error'});
+        } else {
+            const welcomeNotification: Database['public']['Tables']['notifications']['Insert'] = {
+                user_id: user.id,
+                type: 'welcome' as const,
+                title: `¡Bienvenido ${profile.name}!`,
+                message: 'Configura tus torneos, gestiona tus pistas y haz crecer tu comunidad.',
+                link: null,
+                payload: null,
+            };
+            await supabase.from('notifications').insert(welcomeNotification);
+            showToast({ text: "¡Club registrado con éxito! Revisa tu email para confirmar la cuenta.", type: 'success' });
+            setView('auth');
         }
     };
     
@@ -296,16 +351,18 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             })
         );
         
-        const update = { current_players: match.currentPlayers + 1 };
+        const update: Database['public']['Tables']['public_matches']['Update'] = { current_players: match.currentPlayers + 1 };
         await supabase.from('public_matches').update(update).eq('id', matchId);
 
-        const newNotification = {
+        const newNotification: Database['public']['Tables']['notifications']['Insert'] = {
             type: 'match_join' as const,
             title: '¡Te has unido a un partido!',
             message: `Confirmada tu plaza en el partido de las ${match.time} en ${match.courtName}.`,
             user_id: userProfile.id,
+            link: null,
+            payload: null,
         };
-        await supabase.from('notifications').insert([newNotification]);
+        await supabase.from('notifications').insert(newNotification);
         showToast({ text: "Te has unido al partido.", type: 'success' });
 
     }, [userProfile, publicMatches, showToast]);
@@ -314,7 +371,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!selectedConversationId || !supabase || (!userProfile && !loggedInClub)) return;
 
         const currentUserId = userProfile?.id || loggedInClub!.id;
-        const senderName = userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : loggedInClub!.name;
+        const senderName = userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : loggedInClub!.name;
         const otherUserId = selectedConversationId.replace(currentUserId, '').replace('_', '');
         
         const newMessageForUI: ChatMessage = {
@@ -326,7 +383,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             created_at: new Date().toISOString(),
             read: false
         };
-        const newMessageForDb = {
+        const newMessageForDb: Database['public']['Tables']['messages']['Insert'] = {
             conversation_id: selectedConversationId,
             sender_id: currentUserId,
             receiver_id: otherUserId,
@@ -334,16 +391,17 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         };
 
         setMessages(prev => [...prev, newMessageForUI]);
-        await supabase.from('messages').insert([newMessageForDb]);
+        await supabase.from('messages').insert(newMessageForDb);
 
-        const notification = {
+        const notification: Database['public']['Tables']['notifications']['Insert'] = {
             type: 'message' as const,
             title: `Nuevo mensaje de ${senderName}`,
             message: text,
             link: { view: 'chat' as const, params: { conversationId: selectedConversationId } },
             user_id: otherUserId,
+            payload: null,
         };
-        await supabase.from('notifications').insert([notification]);
+        await supabase.from('notifications').insert(notification);
         
     }, [selectedConversationId, userProfile, loggedInClub, allPlayers, allClubs]);
 
@@ -367,7 +425,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (userProfile) setUserProfile(prev => ({ ...prev!, notifications: markAsRead(prev!.notifications) }));
         if (loggedInClub) setLoggedInClub(prev => ({ ...prev!, notifications: markAsRead(prev!.notifications) }));
         
-        const update = { read: true };
+        const update: Database['public']['Tables']['notifications']['Update'] = { read: true };
         await supabase.from('notifications').update(update).eq('id', notification.id);
 
         setIsNotificationsPanelOpen(false);
@@ -393,7 +451,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (userProfile) setUserProfile(prev => ({ ...prev!, notifications: markAllAsRead(prev!.notifications) }));
         if (loggedInClub) setLoggedInClub(prev => ({ ...prev!, notifications: markAllAsRead(prev!.notifications) }));
 
-        const update = { read: true };
+        const update: Database['public']['Tables']['notifications']['Update'] = { read: true };
         await supabase.from('notifications').update(update).eq('user_id', currentUserId).eq('read', false);
     }, [userProfile, loggedInClub]);
 
@@ -419,17 +477,17 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             })
         );
         
-        const profileToUpdate = {
+        const profileToUpdate: Database['public']['Tables']['club_profiles']['Update'] = {
             name: updatedProfile.name,
             country: updatedProfile.country,
             state: updatedProfile.state,
             city: updatedProfile.city,
-            opening_time: updatedProfile.openingTime,
-            closing_time: updatedProfile.closingTime,
-            opening_days: updatedProfile.openingDays,
+            opening_time: updatedProfile.opening_time,
+            closing_time: updatedProfile.closing_time,
+            opening_days: updatedProfile.opening_days,
             status: updatedProfile.status,
-            turn_duration: updatedProfile.turnDuration,
-            has_buffet: updatedProfile.hasBuffet,
+            turn_duration: updatedProfile.turn_duration,
+            has_buffet: updatedProfile.has_buffet,
             photos: finalPhotos.filter(p => p !== null) as string[],
         };
 
@@ -447,9 +505,9 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
     const handleUpdatePlayerProfile = useCallback(async (updatedProfile: UserProfileData) => {
         if (!supabase || !userProfile) return;
         
-        let finalAvatarUrl = updatedProfile.avatarUrl;
-        if (updatedProfile.avatarUrl.startsWith('data:image')) {
-            const blob = dataURLtoBlob(updatedProfile.avatarUrl);
+        let finalAvatarUrl = updatedProfile.avatar_url;
+        if (updatedProfile.avatar_url.startsWith('data:image')) {
+            const blob = dataURLtoBlob(updatedProfile.avatar_url);
             if (blob) {
                 const filePath = `avatars/${userProfile.id}/${Date.now()}.png`;
                 await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
@@ -473,9 +531,9 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             })
         );
         
-        const profileToUpdate = {
-            first_name: updatedProfile.firstName,
-            last_name: updatedProfile.lastName,
+        const profileToUpdate: Database['public']['Tables']['player_profiles']['Update'] = {
+            first_name: updatedProfile.first_name,
+            last_name: updatedProfile.last_name,
             sex: updatedProfile.sex,
             country: updatedProfile.country,
             state: updatedProfile.state,
@@ -524,16 +582,17 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             return;
         }
         
-        const newNotification = {
+        const newNotification: Database['public']['Tables']['notifications']['Insert'] = {
             type: 'friend_request' as const,
             title: 'Nueva solicitud de amistad',
-            message: `${userProfile.firstName} ${userProfile.lastName} quiere ser tu amigo.`,
+            message: `${userProfile.first_name} ${userProfile.last_name} quiere ser tu amigo.`,
             user_id: toId,
             read: false,
             payload: { fromId: userProfile.id },
+            link: null,
         };
 
-        const { error } = await supabase.from('notifications').insert([newNotification]);
+        const { error } = await supabase.from('notifications').insert(newNotification);
         if (error) {
             showToast({ text: `Error al enviar la solicitud: ${error.message}`, type: 'error'});
         } else {
@@ -545,7 +604,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!userProfile || !supabase) return;
 
         const updatedFriends = [...userProfile.friends, fromId];
-        const userUpdate = { friends: updatedFriends };
+        const userUpdate: Database['public']['Tables']['player_profiles']['Update'] = { friends: updatedFriends };
         const { error: userError } = await supabase
             .from('player_profiles')
             .update(userUpdate)
@@ -559,7 +618,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const { data: otherUserData } = await supabase.from('player_profiles').select('friends').eq('id', fromId).single();
         if (otherUserData && otherUserData.friends) {
             const updatedOtherUserFriends = [...otherUserData.friends, userProfile.id];
-             const otherUserUpdate = { friends: updatedOtherUserFriends };
+             const otherUserUpdate: Database['public']['Tables']['player_profiles']['Update'] = { friends: updatedOtherUserFriends };
             await supabase.from('player_profiles').update(otherUserUpdate).eq('id', fromId);
         }
 
@@ -576,13 +635,15 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
 
         const fromUser = allPlayers.find(p => p.id === fromId);
         if (fromUser) {
-            const acceptNotification = {
+            const acceptNotification: Database['public']['Tables']['notifications']['Insert'] = {
                 type: 'friend_accept' as const,
                 title: '¡Solicitud de amistad aceptada!',
-                message: `${userProfile.firstName} ${userProfile.lastName} ha aceptado tu solicitud.`,
+                message: `${userProfile.first_name} ${userProfile.last_name} ha aceptado tu solicitud.`,
                 user_id: fromId,
+                link: null,
+                payload: null,
             };
-            await supabase.from('notifications').insert([acceptNotification]);
+            await supabase.from('notifications').insert(acceptNotification);
         }
     }, [userProfile, allPlayers, showToast]);
     
@@ -603,7 +664,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!userProfile || !supabase || !window.confirm("¿Seguro que quieres eliminar a este amigo?")) return;
 
         const updatedFriends = userProfile.friends.filter(id => id !== friendId);
-        const userUpdate = { friends: updatedFriends };
+        const userUpdate: Database['public']['Tables']['player_profiles']['Update'] = { friends: updatedFriends };
         const { error: userError } = await supabase.from('player_profiles').update(userUpdate).eq('id', userProfile.id);
 
         if (userError) {
@@ -614,7 +675,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const { data: otherUserData } = await supabase.from('player_profiles').select('friends').eq('id', friendId).single();
         if (otherUserData && otherUserData.friends) {
             const updatedOtherUserFriends = (otherUserData.friends || []).filter((id: string) => id !== userProfile.id);
-            const otherUserUpdate = { friends: updatedOtherUserFriends };
+            const otherUserUpdate: Database['public']['Tables']['player_profiles']['Update'] = { friends: updatedOtherUserFriends };
             await supabase.from('player_profiles').update(otherUserUpdate).eq('id', friendId);
         }
         
@@ -688,4 +749,4 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         handlePasswordReset,
         activeNotifications,
     };
-};
+}

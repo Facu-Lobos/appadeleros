@@ -1,9 +1,4 @@
 
-
-
-
-
-
 import { useState, useCallback, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { TimeSlotData, CourtData, UserProfileData, ClubProfileData, BookingStatus, NotificationType, Booking, ToastMessage, Database } from '../types';
@@ -51,7 +46,7 @@ export const useBookingManager = ({ showToast, userProfile, loggedInClub, baseCo
         const dateKey = selectedDate.toISOString().split('T')[0];
         const dayOfWeekJs = selectedDate.getDay();
 
-        const newBookingForDb = {
+        const newBookingForDb: Database['public']['Tables']['bookings']['Insert'] = {
             court_id: courtId,
             user_id: currentUserId,
             player_name: playerName,
@@ -61,7 +56,7 @@ export const useBookingManager = ({ showToast, userProfile, loggedInClub, baseCo
             day_of_week: bookingType === 'fixed' ? dayOfWeekJs : null,
         };
 
-        const { data, error } = await supabase.from('bookings').insert([newBookingForDb]).select().single();
+        const { data, error } = await supabase.from('bookings').insert(newBookingForDb).select().single();
 
         if (error || !data) {
             showToast({ text: `Error al crear la reserva: ${error?.message}`, type: 'error'});
@@ -91,14 +86,16 @@ export const useBookingManager = ({ showToast, userProfile, loggedInClub, baseCo
             });
         }
 
-        const newNotification = {
+        const newNotification: Database['public']['Tables']['notifications']['Insert'] = {
             type: 'booking' as NotificationType,
             title: 'Reserva Confirmada',
             message: `Tu pista en ${selectedCourt.name} a las ${selectedSlot.time} ha sido reservada.`,
             user_id: userProfile?.id || loggedInClub!.id,
+            link: null,
+            payload: null,
         };
 
-        await supabase.from('notifications').insert([newNotification]);
+        await supabase.from('notifications').insert(newNotification);
         
         handleCloseModal();
         showToast({ text: "Reserva confirmada con éxito.", type: 'success'});
@@ -138,13 +135,15 @@ export const useBookingManager = ({ showToast, userProfile, loggedInClub, baseCo
         }
 
         const currentUserId = userProfile?.id || loggedInClub!.id;
-        const cancellationNotification = {
+        const cancellationNotification: Database['public']['Tables']['notifications']['Insert'] = {
             type: 'booking' as NotificationType,
             title: 'Reserva Cancelada',
             message: `La reserva de la pista ${selectedCourt.name} a las ${time} ha sido cancelada.`,
             user_id: currentUserId,
+            link: null,
+            payload: null,
         };
-        await supabase.from('notifications').insert([cancellationNotification]);
+        await supabase.from('notifications').insert(cancellationNotification);
 
         handleCloseModal();
         showToast({ text: "Reserva cancelada.", type: 'info'});
@@ -154,7 +153,7 @@ export const useBookingManager = ({ showToast, userProfile, loggedInClub, baseCo
         const dateKey = selectedDate.toISOString().split('T')[0];
         const dayOfWeek = selectedDate.getDay();
 
-        const timeSlots = generateTimeSlots(club.openingTime, club.closingTime, club.turnDuration)
+        const timeSlots = generateTimeSlots(club.opening_time, club.closing_time, club.turn_duration)
             .map(slot => {
                const singleBooking = singleBookings[dateKey]?.[court.id]?.[slot.time];
                const fixedBooking = fixedBookings[dayOfWeek]?.[court.id]?.[slot.time];

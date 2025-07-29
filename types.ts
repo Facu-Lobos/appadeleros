@@ -1,7 +1,4 @@
 
-
-
-
 export enum BookingStatus {
   AVAILABLE = 'available',
   BOOKED = 'booked',
@@ -87,15 +84,15 @@ export interface UserProfileData {
   id: string; // Unique identifier for the user
   email: string;
   password?: string;
-  firstName: string;
-  lastName:string;
+  first_name: string;
+  last_name:string;
   sex: PlayerSex;
   country: string;
   state: string;
   city: string;
   availability: PlayerAvailability[];
   category: PlayerCategory;
-  avatarUrl: string;
+  avatar_url: string;
   photos: string[];
   stats: {
       matches: number;
@@ -104,8 +101,8 @@ export interface UserProfileData {
       winRate: number; // percentage
       last30DaysTrend: number; // percentage change
   };
-  upcomingMatches: UpcomingMatch[];
-  matchHistory: MatchStat[];
+  upcoming_matches: UpcomingMatch[];
+  match_history: MatchStat[];
   friends: string[]; // array of user IDs
   friendRequests: FriendRequest[];
   notifications: Notification[];
@@ -115,19 +112,19 @@ export interface ClubProfileData {
   id: string;
   email: string;
   password?: string;
-  memberId: string;
+  member_id: string;
   name: string;
   country: string;
   state: string;
   city: string;
-  totalCourts: number;
+  total_courts: number;
   courtDetails: CourtDetails[];
-  openingTime: string; // e.g., "09:00"
-  closingTime: string; // e.g., "23:00"
-  openingDays: DayOfWeek[];
+  opening_time: string; // e.g., "09:00"
+  closing_time: string; // e.g., "23:00"
+  opening_days: DayOfWeek[];
   status: 'Abierto' | 'Cerrado';
-  turnDuration: number; // 60, 90, 120
-  hasBuffet: boolean;
+  turn_duration: number; // 60, 90, 120
+  has_buffet: boolean;
   photos: string[];
   notifications: Notification[];
 }

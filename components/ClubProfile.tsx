@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ClubProfileData, DayOfWeek, CourtDetails } from '../types';
 import { DAYS_OF_WEEK } from '../constants';
@@ -34,8 +33,8 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ profile, onUpdateProfile, onD
         if (type === 'checkbox') {
             const { checked } = e.target as HTMLInputElement;
             setEditedProfile(prev => ({ ...prev, [name]: checked }));
-        } else if (name === 'turnDuration') {
-            setEditedProfile(prev => ({...prev, turnDuration: parseInt(value, 10) }));
+        } else if (name === 'turn_duration') {
+            setEditedProfile(prev => ({...prev, turn_duration: parseInt(value, 10) }));
         } else if (name === 'status') {
             setEditedProfile(prev => ({...prev, status: value as 'Abierto' | 'Cerrado' }));
         }
@@ -47,9 +46,9 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ profile, onUpdateProfile, onD
     const handleOpeningDaysChange = (day: DayOfWeek) => {
         setEditedProfile(prev => ({
             ...prev,
-            openingDays: prev.openingDays.includes(day)
-                ? prev.openingDays.filter(d => d !== day)
-                : [...prev.openingDays, day],
+            opening_days: prev.opening_days.includes(day)
+                ? prev.opening_days.filter(d => d !== day)
+                : [...prev.opening_days, day],
         }));
     };
 
@@ -90,7 +89,7 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ profile, onUpdateProfile, onD
                 return updatedCourt;
             });
 
-            return { ...prev, courtDetails: newCourtDetails, totalCourts: newCourtDetails.length };
+            return { ...prev, courtDetails: newCourtDetails, total_courts: newCourtDetails.length };
         });
     };
 
@@ -98,7 +97,7 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ profile, onUpdateProfile, onD
         setEditedProfile(prev => {
             const newCourt: CourtDetails = { name: `Pista ${prev.courtDetails.length + 1}`, type: 'Cristal', location: 'Indoor', surface: 'Alfombra' };
             const newCourts = [...prev.courtDetails, newCourt];
-            return { ...prev, courtDetails: newCourts, totalCourts: newCourts.length };
+            return { ...prev, courtDetails: newCourts, total_courts: newCourts.length };
         });
     };
 
@@ -109,7 +108,7 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ profile, onUpdateProfile, onD
                 return prev;
             }
             const newCourts = prev.courtDetails.filter((_, i) => i !== index);
-            return { ...prev, courtDetails: newCourts, totalCourts: newCourts.length };
+            return { ...prev, courtDetails: newCourts, total_courts: newCourts.length };
         });
     };
 
@@ -138,7 +137,7 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ profile, onUpdateProfile, onD
                      <div className="grid grid-cols-2 gap-6">
                          <div>
                             <label className="block text-sm font-medium text-light-secondary mb-2">Duración de Turno (minutos)</label>
-                            <select name="turnDuration" value={editedProfile.turnDuration} onChange={handleInputChange} className="w-full bg-dark-tertiary border-dark-tertiary rounded-md p-3 focus:ring-2 focus:ring-primary focus:outline-none">
+                            <select name="turn_duration" value={editedProfile.turn_duration} onChange={handleInputChange} className="w-full bg-dark-tertiary border-dark-tertiary rounded-md p-3 focus:ring-2 focus:ring-primary focus:outline-none">
                                 <option value="60">60 minutos</option>
                                 <option value="90">90 minutos</option>
                                 <option value="120">120 minutos</option>
@@ -152,15 +151,15 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ profile, onUpdateProfile, onD
                             </select>
                         </div>
                         <div className="flex items-center pt-8 col-span-2">
-                             <input type="checkbox" id="hasBuffet" name="hasBuffet" checked={editedProfile.hasBuffet} onChange={handleInputChange} className="h-5 w-5 rounded text-primary bg-dark-tertiary border-dark-tertiary focus:ring-primary" />
-                             <label htmlFor="hasBuffet" className="ml-3 block text-base font-medium text-light-primary">¿Tiene buffet?</label>
+                             <input type="checkbox" id="has_buffet" name="has_buffet" checked={editedProfile.has_buffet} onChange={handleInputChange} className="h-5 w-5 rounded text-primary bg-dark-tertiary border-dark-tertiary focus:ring-primary" />
+                             <label htmlFor="has_buffet" className="ml-3 block text-base font-medium text-light-primary">¿Tiene buffet?</label>
                         </div>
                     </div>
                      <div>
                         <label className="block text-sm font-medium text-light-secondary mb-2">Días de Apertura</label>
                         <div className="flex flex-wrap gap-2 bg-dark-secondary p-3 rounded-md border border-dark-tertiary">
                             {DAYS_OF_WEEK.map(day => (
-                                <button key={day} type="button" onClick={() => handleOpeningDaysChange(day)} className={`px-3 py-1 text-sm rounded-full transition-colors ${editedProfile.openingDays.includes(day) ? 'bg-primary text-dark-primary font-bold' : 'bg-dark-tertiary text-light-primary'}`}>
+                                <button key={day} type="button" onClick={() => handleOpeningDaysChange(day)} className={`px-3 py-1 text-sm rounded-full transition-colors ${editedProfile.opening_days.includes(day) ? 'bg-primary text-dark-primary font-bold' : 'bg-dark-tertiary text-light-primary'}`}>
                                     {day}
                                 </button>
                             ))}
@@ -259,19 +258,19 @@ const ClubProfile: React.FC<ClubProfileProps> = ({ profile, onUpdateProfile, onD
                 <div className="bg-dark-secondary p-4 rounded-lg border border-dark-tertiary">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p><span className="font-semibold text-white">Horario:</span> {profile.openingTime} - {profile.closingTime}</p>
-                             <p><span className="font-semibold text-white">Días:</span> {profile.openingDays.join(', ')}</p>
+                            <p><span className="font-semibold text-white">Horario:</span> {profile.opening_time} - {profile.closing_time}</p>
+                             <p><span className="font-semibold text-white">Días:</span> {profile.opening_days.join(', ')}</p>
                         </div>
                         <span className={`px-3 py-1 text-sm font-bold rounded-full ${profile.status === 'Abierto' ? 'bg-green-500 text-white' : 'bg-red-600 text-white'}`}>
                             {profile.status}
                         </span>
                     </div>
-                    <p className="mt-2"><span className="font-semibold text-white">Duración de Turno:</span> {profile.turnDuration} minutos</p>
-                    <p><span className="font-semibold text-white">Buffet:</span> {profile.hasBuffet ? 'Sí, ¡tenemos buffet!' : 'No disponible'}</p>
+                    <p className="mt-2"><span className="font-semibold text-white">Duración de Turno:</span> {profile.turn_duration} minutos</p>
+                    <p><span className="font-semibold text-white">Buffet:</span> {profile.has_buffet ? 'Sí, ¡tenemos buffet!' : 'No disponible'}</p>
                 </div>
 
                 <div>
-                    <h3 className="text-xl font-semibold text-white mb-3">Nuestras {profile.totalCourts} Pistas:</h3>
+                    <h3 className="text-xl font-semibold text-white mb-3">Nuestras {profile.total_courts} Pistas:</h3>
                     <div className="space-y-3">
                     {profile.courtDetails.map((court, index) => (
                         <div key={index} className="bg-dark-secondary p-4 rounded-lg border border-dark-tertiary">

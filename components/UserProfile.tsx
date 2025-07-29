@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { UserProfileData, PlayerCategory } from '../types';
 import { PLAYER_CATEGORIES } from '../constants';
@@ -26,7 +25,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ profile, onUpdate }) => {
         e.preventDefault();
         const updatedProfileWithAvatar = {
             ...editedProfile,
-            avatarUrl: `https://api.dicebear.com/8.x/initials/svg?seed=${editedProfile.firstName}+${editedProfile.lastName}`
+            avatar_url: `https://api.dicebear.com/8.x/initials/svg?seed=${editedProfile.first_name}+${editedProfile.last_name}`
         };
         onUpdate(updatedProfileWithAvatar);
         setSaved(true);
@@ -38,31 +37,31 @@ const UserProfile: React.FC<UserProfileProps> = ({ profile, onUpdate }) => {
             <h2 className="text-3xl font-bold text-white mb-6">Mi Perfil</h2>
             <form onSubmit={handleSave} className="space-y-6">
                 <div className="flex items-center gap-4">
-                    <img src={editedProfile.avatarUrl} alt="Avatar" className="w-20 h-20 rounded-full bg-dark-tertiary border-2 border-primary" />
+                    <img src={editedProfile.avatar_url} alt="Avatar" className="w-20 h-20 rounded-full bg-dark-tertiary border-2 border-primary" />
                     <div>
-                        <h3 className="text-xl font-bold">{editedProfile.firstName} {editedProfile.lastName}</h3>
+                        <h3 className="text-xl font-bold">{editedProfile.first_name} {editedProfile.last_name}</h3>
                         <p className="text-light-secondary">Categoría: {editedProfile.category}</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                      <div>
-                        <label htmlFor="firstName" className="block text-sm font-medium text-light-secondary mb-1">Nombre</label>
+                        <label htmlFor="first_name" className="block text-sm font-medium text-light-secondary mb-1">Nombre</label>
                         <input
                             type="text"
-                            id="firstName"
-                            name="firstName"
-                            value={editedProfile.firstName}
+                            id="first_name"
+                            name="first_name"
+                            value={editedProfile.first_name}
                             onChange={handleInputChange}
                             className="w-full bg-dark-tertiary border border-dark-tertiary rounded-md p-2 focus:ring-2 focus:ring-primary focus:outline-none"
                         />
                     </div>
                      <div>
-                        <label htmlFor="lastName" className="block text-sm font-medium text-light-secondary mb-1">Apellido</label>
+                        <label htmlFor="last_name" className="block text-sm font-medium text-light-secondary mb-1">Apellido</label>
                         <input
                             type="text"
-                            id="lastName"
-                            name="lastName"
-                            value={editedProfile.lastName}
+                            id="last_name"
+                            name="last_name"
+                            value={editedProfile.last_name}
                             onChange={handleInputChange}
                             className="w-full bg-dark-tertiary border border-dark-tertiary rounded-md p-2 focus:ring-2 focus:ring-primary focus:outline-none"
                         />

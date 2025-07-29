@@ -24,7 +24,7 @@ const ClubDetailPage: React.FC<ClubDetailPageProps> = ({ club, courts, onSlotCli
     // We convert Sun->6, Mon->0, etc.
     const dayIndex = (selectedDate.getDay() + 6) % 7;
     const selectedDayName = DAYS_OF_WEEK[dayIndex];
-    const isClubOpenOnSelectedDate = club.status === 'Abierto' && club.openingDays.includes(selectedDayName);
+    const isClubOpenOnSelectedDate = club.status === 'Abierto' && club.opening_days.includes(selectedDayName);
 
 
     useEffect(() => {
@@ -64,9 +64,9 @@ const ClubDetailPage: React.FC<ClubDetailPageProps> = ({ club, courts, onSlotCli
                     <h2 className="text-3xl font-bold text-white">{club.name}</h2>
                     <p className="text-light-secondary mb-4">{club.city}</p>
                      <div className="space-y-2 text-light-primary border-t border-dark-tertiary pt-4">
-                        <p><span className="font-semibold text-white">Horario:</span> {club.openingTime} - {club.closingTime}</p>
-                        <p><span className="font-semibold text-white">Días de apertura:</span> {club.openingDays.join(', ')}</p>
-                        <p><span className="font-semibold text-white">Buffet:</span> {club.hasBuffet ? 'Sí' : 'No'}</p>
+                        <p><span className="font-semibold text-white">Horario:</span> {club.opening_time} - {club.closing_time}</p>
+                        <p><span className="font-semibold text-white">Días de apertura:</span> {club.opening_days.join(', ')}</p>
+                        <p><span className="font-semibold text-white">Buffet:</span> {club.has_buffet ? 'Sí' : 'No'}</p>
                     </div>
                 </div>
             </div>

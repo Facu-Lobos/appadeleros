@@ -1,7 +1,4 @@
 
-
-
-
 import { useState, useCallback } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Tournament, Team, Group, GroupMatch, UserProfileData, NotificationType, TournamentRegistration, ToastMessage, Ranking, Database, PlayerRankingEntry, Json } from '../types';

@@ -589,12 +589,6 @@ export interface Database {
           category?: string
           players?: Json
         }
-        Upsert: {
-          id?: number
-          created_at?: string
-          category: string
-          players: Json
-        }
       }
       tournaments: {
         Row: {
@@ -687,4 +681,5 @@ export interface Database {
     }
   }
 }
+
 

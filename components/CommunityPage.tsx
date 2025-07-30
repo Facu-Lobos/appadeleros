@@ -14,6 +14,7 @@ interface CommunityPageProps {
 
 const CommunityPage: React.FC<CommunityPageProps> = ({ currentUser, allPlayers, allClubs, onSendFriendRequest, onStartChat }) => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [sentRequests, setSentRequests] = useState<string[]>([]);
     const isClubView = 'member_id' in currentUser;
     const isPlayerView = !isClubView;
 
@@ -35,17 +36,28 @@ const CommunityPage: React.FC<CommunityPageProps> = ({ currentUser, allPlayers, 
     const getFriendshipStatus = (player: UserProfileData) => {
         if (!('friends' in currentUser)) return 'none';
 
-        if (currentUser.friends.includes(player.id)) {
+        const friends = currentUser.friends || [];
+        const notifications = currentUser.notifications || [];
+
+        if (friends.includes(player.id)) {
             return 'friends';
         }
-        if (player.friendRequests.some(req => req.fromId === currentUser.id)) {
+        if (sentRequests.includes(player.id)) {
             return 'sent';
         }
-        if (currentUser.friendRequests.some(req => req.fromId === player.id)) {
+        if (notifications.some(n => n.type === 'friend_request' && n.payload?.fromId === player.id)) {
             return 'received';
         }
         return 'none';
     };
+
+    const handleSendRequest = (toId: string) => {
+        if (onSendFriendRequest) {
+            onSendFriendRequest(toId);
+            setSentRequests(prev => [...prev, toId]);
+        }
+    };
+
 
     return (
         <div className="space-y-8">
@@ -98,7 +110,7 @@ const CommunityPage: React.FC<CommunityPageProps> = ({ currentUser, allPlayers, 
                                                     {status === 'sent' && <span className="text-sm font-semibold text-yellow-400">Solicitud Enviada</span>}
                                                     {status === 'received' && <span className="text-sm font-semibold text-blue-400">Solicitud Recibida</span>}
                                                     {status === 'none' && (
-                                                        <button onClick={() => onSendFriendRequest?.(player.id)} className="bg-primary text-dark-primary font-bold text-sm py-1 px-3 rounded-md hover:bg-primary-hover">
+                                                        <button onClick={() => handleSendRequest(player.id)} className="bg-primary text-dark-primary font-bold text-sm py-1 px-3 rounded-md hover:bg-primary-hover">
                                                             + Añadir
                                                         </button>
                                                     )}

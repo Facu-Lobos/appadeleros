@@ -104,9 +104,9 @@ export interface UserProfileData {
   };
   upcoming_matches: UpcomingMatch[];
   match_history: MatchStat[];
-  friends: string[]; // array of user IDs
-  friendRequests: FriendRequest[];
-  notifications: Notification[];
+  friends: string[] | null;
+  friendRequests?: FriendRequest[];
+  notifications?: Notification[];
 }
 
 export interface ClubProfileData {

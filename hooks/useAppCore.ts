@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { UserProfileData, ClubProfileData, CourtData, PublicMatch, Ranking, ChatMessage, AppView, PlayerAppView, ClubAppView, Notification, NotificationType, ToastMessage, Booking, Database, Tournament, Json } from '../types';
@@ -58,22 +59,35 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
              const [
                 { data: clubsData },
                 { data: courtsData },
-                { data: tournamentsData },
+                { data: tournamentsData, error: tournamentsError },
+                { data: registrationsData, error: registrationsError },
                 { data: playersData },
                 { data: publicMatchesData },
                 { data: rankingsData },
             ] = await Promise.all([
                 supabase.from('club_profiles').select('*'),
                 supabase.from('courts').select('*'),
-                supabase.from('tournaments').select('*, tournament_registrations(*)'),
+                supabase.from('tournaments').select('*'),
+                supabase.from('tournament_registrations').select('*'),
                 supabase.from('player_profiles').select('*'),
                 supabase.from('public_matches').select('*'),
                 supabase.from('rankings').select('*'),
             ]);
 
+            if (tournamentsError) console.error("Error fetching tournaments:", tournamentsError);
+            if (registrationsError) console.error("Error fetching registrations:", registrationsError);
+
             if (clubsData) setAllClubs(clubsData as any);
             if (courtsData) setBaseCourts(courtsData as any);
-            if (tournamentsData) setInitialTournaments(tournamentsData as any);
+            
+            if (tournamentsData) {
+                const tournamentsWithRegistrations = tournamentsData.map(t => ({
+                    ...t,
+                    tournament_registrations: registrationsData?.filter(r => r.tournament_id === t.id) || []
+                }));
+                setInitialTournaments(tournamentsWithRegistrations as any);
+            }
+            
             if (playersData) setAllPlayers(playersData as any);
             if (publicMatchesData) setPublicMatches(publicMatchesData as any);
             if (rankingsData) setRankings(rankingsData as any);

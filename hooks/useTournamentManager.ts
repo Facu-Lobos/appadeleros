@@ -1,5 +1,6 @@
 
 
+
 import { useState, useCallback } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Tournament, Team, Group, GroupMatch, UserProfileData, NotificationType, TournamentRegistration, ToastMessage, Ranking, Database, PlayerRankingEntry, Json } from '../types';
@@ -59,18 +60,19 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             date: tournament.date,
             status: tournament.status,
             format: tournament.format,
-            teams: tournament.teams as Json,
+            teams: tournament.teams as unknown as Json,
             max_teams: tournament.max_teams,
             teams_per_group: tournament.teams_per_group,
-            data: tournament.data as Json,
-            advancing_teams: tournament.advancing_teams as Json | null,
+            data: tournament.data as unknown as Json,
+            advancing_teams: tournament.advancing_teams as unknown as Json | null,
         };
 
-        const { data: dbData, error } = await supabase.from('tournaments').insert(tournamentToInsert).select('*, tournament_registrations(*)').single();
+        const { data: dbData, error } = await supabase.from('tournaments').insert(tournamentToInsert).select('*').single();
         if (error) {
             showToast({ text: `Error al crear el torneo: ${error.message}`, type: 'error'});
         } else if (dbData) {
-            setTournaments(prev => [...prev, dbData as unknown as Tournament]);
+            const newTournamentWithRegs = { ...dbData, tournament_registrations: [] };
+            setTournaments(prev => [...prev, newTournamentWithRegs as unknown as Tournament]);
             showToast({ text: "Torneo creado con éxito.", type: 'success'});
         }
     }, [showToast]);
@@ -84,19 +86,25 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
             date: updatedTournament.date,
             status: updatedTournament.status,
             format: updatedTournament.format,
-            teams: updatedTournament.teams as Json,
-            data: updatedTournament.data as Json,
+            teams: updatedTournament.teams as unknown as Json,
+            data: updatedTournament.data as unknown as Json,
             club_id: updatedTournament.club_id,
             max_teams: updatedTournament.max_teams,
             teams_per_group: updatedTournament.teams_per_group,
-            advancing_teams: updatedTournament.advancing_teams as Json,
+            advancing_teams: updatedTournament.advancing_teams as unknown as Json,
         };
 
-        const { data, error } = await supabase.from('tournaments').update(tournamentToUpdate).eq('id', updatedTournament.id).select('*, tournament_registrations(*)').single();
+        const { data, error } = await supabase.from('tournaments').update(tournamentToUpdate).eq('id', updatedTournament.id).select('*').single();
         if (error) {
             showToast({ text: `Error al actualizar el torneo: ${error.message}`, type: 'error'});
         } else if (data) {
-            const newTournament = data as unknown as Tournament;
+             const { data: registrationsData } = await supabase.from('tournament_registrations').select('*').eq('tournament_id', updatedTournament.id);
+
+            const newTournament = {
+                ...(data as unknown as Tournament),
+                tournament_registrations: registrationsData || [],
+            };
+            
             setTournaments(prev => prev.map(t => t.id === updatedTournament.id ? newTournament : t));
             
             // --- NEW LOGIC: UPDATE RANKING ON FINISH ---
@@ -108,7 +116,7 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
                     .filter(r => points.size > 0 && r.category === newTournament.category) // Only upsert the affected category
                     .map(r => ({
                         category: r.category,
-                        players: r.players as Json,
+                        players: r.players as unknown as Json,
                     }));
                 
                 if (rankingsToUpsert.length > 0) {
@@ -201,7 +209,7 @@ export const useTournamentManager = ({ showToast, userProfile, allPlayers, initi
         
         if (status === 'approved') {
            updatedTeams = [...tournamentToUpdateLocally.teams, { id: registrationToNotify.id, name: registrationToNotify.team_name, playerIds: registrationToNotify.player_ids }];
-           const tournamentUpdate: Database['public']['Tables']['tournaments']['Update'] = { teams: updatedTeams as Json };
+           const tournamentUpdate: Database['public']['Tables']['tournaments']['Update'] = { teams: updatedTeams as unknown as Json };
            await supabase.from('tournaments').update(tournamentUpdate).eq('id', tournamentId);
         }
         

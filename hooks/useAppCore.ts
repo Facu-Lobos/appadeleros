@@ -59,26 +59,29 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
              const [
                 { data: clubsData },
                 { data: courtsData },
-                { data: tournamentsData, error: tournamentsError },
-                { data: registrationsData, error: registrationsError },
                 { data: playersData },
                 { data: publicMatchesData },
                 { data: rankingsData },
             ] = await Promise.all([
                 supabase.from('club_profiles').select('*'),
                 supabase.from('courts').select('*'),
-                supabase.from('tournaments').select('*'),
-                supabase.from('tournament_registrations').select('*'),
                 supabase.from('player_profiles').select('*'),
                 supabase.from('public_matches').select('*'),
                 supabase.from('rankings').select('*'),
             ]);
 
-            if (tournamentsError) console.error("Error fetching tournaments:", tournamentsError);
-            if (registrationsError) console.error("Error fetching registrations:", registrationsError);
-
             if (clubsData) setAllClubs(clubsData as any);
             if (courtsData) setBaseCourts(courtsData as any);
+            if (playersData) setAllPlayers(playersData as any);
+            if (publicMatchesData) setPublicMatches(publicMatchesData as any);
+            if (rankingsData) setRankings(rankingsData as any);
+
+            // Fetch tournaments and registrations separately to avoid join issues
+            const { data: tournamentsData, error: tournamentsError } = await supabase.from('tournaments').select('*');
+            const { data: registrationsData, error: registrationsError } = await supabase.from('tournament_registrations').select('*');
+
+            if (tournamentsError) console.error("Error fetching tournaments:", tournamentsError);
+            if (registrationsError) console.error("Error fetching registrations:", registrationsError);
             
             if (tournamentsData) {
                 const tournamentsWithRegistrations = tournamentsData.map(t => ({
@@ -87,10 +90,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 }));
                 setInitialTournaments(tournamentsWithRegistrations as any);
             }
-            
-            if (playersData) setAllPlayers(playersData as any);
-            if (publicMatchesData) setPublicMatches(publicMatchesData as any);
-            if (rankingsData) setRankings(rankingsData as any);
         };
         
         fetchAllData().finally(() => setIsLoading(false));
@@ -102,18 +101,25 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 const { data: messagesData } = await supabase.from('messages').select('*').or(`sender_id.eq.${session.user.id},receiver_id.eq.${session.user.id}`);
                 if (messagesData) setMessages(messagesData as any);
 
-                const { data: playerProfile } = await supabase.from('player_profiles').select('*, notifications!user_id(*)').eq('id', session.user.id).single();
-                if (playerProfile) {
-                    setUserProfile(playerProfile as any);
+                // Try to fetch player profile (without join)
+                const { data: playerProfileData } = await supabase.from('player_profiles').select('*').eq('id', session.user.id).single();
+
+                if (playerProfileData) {
+                    const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', session.user.id);
+                    const fullPlayerProfile = { ...playerProfileData, notifications: notificationsData || [] };
+                    setUserProfile(fullPlayerProfile as any);
                     setLoggedInClub(null);
                     setPlayerView('home');
                     setView('auth'); // Reset main view
                     return;
                 }
 
-                const { data: clubProfile } = await supabase.from('club_profiles').select('*, notifications!user_id(*)').eq('id', session.user.id).single();
-                if (clubProfile) {
-                    setLoggedInClub(clubProfile as any);
+                // If not a player, try to fetch club profile (without join)
+                const { data: clubProfileData } = await supabase.from('club_profiles').select('*').eq('id', session.user.id).single();
+                if (clubProfileData) {
+                    const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', session.user.id);
+                    const fullClubProfile = { ...clubProfileData, notifications: notificationsData || [] };
+                    setLoggedInClub(fullClubProfile as any);
                     setUserProfile(null);
                     setClubView('tournaments');
                      setView('auth'); // Reset main view
@@ -510,8 +516,10 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (error) {
             showToast({ text: `Error al actualizar el perfil: ${error.message}`, type: 'error'});
         } else if (data) {
-            setLoggedInClub(data as any);
-            setAllClubs(prev => prev.map(c => c.id === loggedInClub.id ? (data as any) : c));
+            const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', data.id);
+            const fullProfile = { ...data, notifications: notificationsData || [] };
+            setLoggedInClub(fullProfile as any);
+            setAllClubs(prev => prev.map(c => c.id === loggedInClub.id ? (fullProfile as any) : c));
             showToast({ text: "Perfil del club actualizado.", type: 'success'});
         }
     }, [loggedInClub, showToast]);
@@ -558,13 +566,15 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             photos: finalPhotos.filter(p => p !== null) as string[],
         };
 
-        const { data, error } = await supabase.from('player_profiles').update(profileToUpdate).eq('id', userProfile.id).select('*, notifications!user_id(*)').single();
+        const { data, error } = await supabase.from('player_profiles').update(profileToUpdate).eq('id', userProfile.id).select().single();
 
         if (error) {
             showToast({ text: `Error al actualizar el perfil: ${error.message}`, type: 'error'});
         } else if (data) {
-            setUserProfile(data as any);
-            setAllPlayers(prev => prev.map(p => p.id === userProfile.id ? (data as any) : p));
+            const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', data.id);
+            const fullProfile = { ...data, notifications: notificationsData || [] };
+            setUserProfile(fullProfile as any);
+            setAllPlayers(prev => prev.map(p => p.id === userProfile.id ? (fullProfile as any) : p));
             showToast({ text: "Perfil actualizado con éxito.", type: 'success'});
         }
     }, [userProfile, showToast]);

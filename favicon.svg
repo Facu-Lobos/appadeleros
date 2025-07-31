@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    {/* Ball Circle: Filled with primary color */}
+    <circle cx="12" cy="12" r="11" fill="#00F5D4" />
+
+    {/* 'U' shape rotated 45 degrees, larger and touching the edges */}
+    <path
+        d="M 5 19 V 12 C 5 5 19 5 19 12 V 19"
+        stroke="#0F172A" /* dark-primary bg */
+        strokeWidth="2.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        transform="rotate(45 12 12)"
+    />
+</svg>

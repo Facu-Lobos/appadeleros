@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { UserProfileData, ClubProfileData, CourtData, PublicMatch, Ranking, ChatMessage, AppView, PlayerAppView, ClubAppView, Notification, NotificationType, ToastMessage, Booking, Database, Tournament, Json } from '../types';
+import { UserProfileData, ClubProfileData, CourtData, PublicMatch, Ranking, ChatMessage, AppView, PlayerAppView, ClubAppView, Notification, NotificationType, ToastMessage, Booking, Database, Tournament, Json, TournamentRegistration } from '../types';
 
 // Helper to convert data URL to Blob for uploading
 const dataURLtoBlob = (dataurl: string) => {
@@ -44,97 +44,139 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
 
+    // Helper to fetch user/club profile and their notifications
+    const fetchProfileAndSetState = async (userId: string) => {
+        if (!supabase) return;
+
+        // Try to fetch player profile
+        const { data: playerProfileData } = await supabase.from('player_profiles').select('*').eq('id', userId).single();
+        if (playerProfileData) {
+            const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', userId);
+            const fullProfile = { ...playerProfileData, notifications: notificationsData || [] };
+            setUserProfile(fullProfile as any);
+            setLoggedInClub(null);
+            setPlayerView('home');
+            return;
+        }
+
+        // If not a player, try to fetch club profile
+        const { data: clubProfileData } = await supabase.from('club_profiles').select('*').eq('id', userId).single();
+        if (clubProfileData) {
+            const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', userId);
+            const fullProfile = { ...clubProfileData, notifications: notificationsData || [] };
+            setLoggedInClub(fullProfile as any);
+            setUserProfile(null);
+            setClubView('tournaments');
+            return;
+        }
+
+        // If no profile found, it's an issue. Log out.
+        showToast({ text: "No se encontró un perfil para este usuario. Se cerrará la sesión.", type: 'error' });
+        await supabase.auth.signOut();
+    };
+
      // --- Auth and Data Loading ---
     useEffect(() => {
+        // FIX: Add a guard at the very beginning of the effect.
+        // If supabase client is not initialized (due to missing .env vars),
+        // show an error and stop execution to prevent a crash.
         if (!supabase) {
+            showToast({ text: "Error: No se pudo conectar a la base de datos. Revisa las variables de entorno.", type: 'error' });
             setIsLoading(false);
-            showToast({ text: "Error: No se pudo conectar a la base de datos.", type: 'error'});
             return;
-        };
+        }
 
-        // Fetch initial data on load
-        const fetchAllData = async () => {
-             const [
-                { data: clubsData },
-                { data: courtsData },
-                { data: playersData },
-                { data: publicMatchesData },
-                { data: rankingsData },
-            ] = await Promise.all([
-                supabase.from('club_profiles').select('*'),
-                supabase.from('courts').select('*'),
-                supabase.from('player_profiles').select('*'),
-                supabase.from('public_matches').select('*'),
-                supabase.from('rankings').select('*'),
-            ]);
+        const initializeApp = async () => {
+            setIsLoading(true);
+            try {
+                // 1. Fetch all public data simultaneously
+                const [
+                    { data: clubsData, error: clubsError },
+                    { data: courtsData, error: courtsError },
+                    { data: playersData, error: playersError },
+                    { data: publicMatchesData, error: publicMatchesError },
+                    { data: rankingsData, error: rankingsError },
+                    { data: tournamentsData, error: tournamentsError },
+                    { data: registrationsData, error: registrationsError },
+                ] = await Promise.all([
+                    supabase.from('club_profiles').select('*'),
+                    supabase.from('courts').select('*'),
+                    supabase.from('player_profiles').select('*'),
+                    supabase.from('public_matches').select('*'),
+                    supabase.from('rankings').select('*'),
+                    supabase.from('tournaments').select('*'),
+                    supabase.from('tournament_registrations').select('*'),
+                ]);
 
-            if (clubsData) setAllClubs(clubsData as any);
-            if (courtsData) setBaseCourts(courtsData as any);
-            if (playersData) setAllPlayers(playersData as any);
-            if (publicMatchesData) setPublicMatches(publicMatchesData as any);
-            if (rankingsData) setRankings(rankingsData as any);
+                // Handle potential errors and set state with fallbacks
+                if (clubsError) console.error("Error fetching clubs:", clubsError.message);
+                setAllClubs((clubsData as any) || []);
 
-            // Fetch tournaments and registrations separately to avoid join issues
-            const { data: tournamentsData, error: tournamentsError } = await supabase.from('tournaments').select('*');
-            const { data: registrationsData, error: registrationsError } = await supabase.from('tournament_registrations').select('*');
+                if (courtsError) console.error("Error fetching courts:", courtsError.message);
+                setBaseCourts((courtsData as any) || []);
 
-            if (tournamentsError) console.error("Error fetching tournaments:", tournamentsError);
-            if (registrationsError) console.error("Error fetching registrations:", registrationsError);
-            
-            if (tournamentsData) {
-                const tournamentsWithRegistrations = tournamentsData.map(t => ({
-                    ...t,
-                    tournament_registrations: registrationsData?.filter(r => r.tournament_id === t.id) || []
-                }));
-                setInitialTournaments(tournamentsWithRegistrations as any);
+                if (playersError) console.error("Error fetching players:", playersError.message);
+                setAllPlayers((playersData as any) || []);
+                
+                if (publicMatchesError) console.error("Error fetching public matches:", publicMatchesError.message);
+                setPublicMatches((publicMatchesData as any) || []);
+
+                if (rankingsError) console.error("Error fetching rankings:", rankingsError.message);
+                setRankings((rankingsData as any) || []);
+
+                if (tournamentsError) console.error("Error fetching tournaments:", tournamentsError.message);
+                if (registrationsError) console.error("Error fetching registrations:", registrationsError.message);
+                
+                if (tournamentsData) {
+                    const tournamentsWithRegistrations = tournamentsData.map(t => ({
+                        ...t,
+                        tournament_registrations: (registrationsData as TournamentRegistration[])?.filter(r => r.tournament_id === t.id) || []
+                    }));
+                    setInitialTournaments(tournamentsWithRegistrations as any);
+                } else {
+                    setInitialTournaments([]);
+                }
+
+
+                // 2. Check for an existing session and load its data
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    await fetchProfileAndSetState(session.user.id);
+                    const { data: messagesData } = await supabase.from('messages').select('*').or(`sender_id.eq.${session.user.id},receiver_id.eq.${session.user.id}`);
+                    setMessages((messagesData as any) || []);
+                }
+            } catch (error: any) {
+                console.error("Error during app initialization:", error);
+                showToast({ text: `Ocurrió un error inesperado al cargar la app.`, type: 'error' });
+            } finally {
+                 // Set loading to false only after all initial data is loaded and auth checked
+                setIsLoading(false);
             }
         };
-        
-        fetchAllData().finally(() => setIsLoading(false));
 
+        initializeApp();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (session) {
-                // Fetch user-specific data upon login
+        // 3. Set up auth listener for *subsequent* changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                setIsLoading(true);
+                await fetchProfileAndSetState(session.user.id);
                 const { data: messagesData } = await supabase.from('messages').select('*').or(`sender_id.eq.${session.user.id},receiver_id.eq.${session.user.id}`);
-                if (messagesData) setMessages(messagesData as any);
-
-                // Try to fetch player profile (without join)
-                const { data: playerProfileData } = await supabase.from('player_profiles').select('*').eq('id', session.user.id).single();
-
-                if (playerProfileData) {
-                    const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', session.user.id);
-                    const fullPlayerProfile = { ...playerProfileData, notifications: notificationsData || [] };
-                    setUserProfile(fullPlayerProfile as any);
-                    setLoggedInClub(null);
-                    setPlayerView('home');
-                    setView('auth'); // Reset main view
-                    return;
-                }
-
-                // If not a player, try to fetch club profile (without join)
-                const { data: clubProfileData } = await supabase.from('club_profiles').select('*').eq('id', session.user.id).single();
-                if (clubProfileData) {
-                    const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', session.user.id);
-                    const fullClubProfile = { ...clubProfileData, notifications: notificationsData || [] };
-                    setLoggedInClub(fullClubProfile as any);
-                    setUserProfile(null);
-                    setClubView('tournaments');
-                     setView('auth'); // Reset main view
-                    return;
-                }
-                
-                showToast({ text: "No se encontró un perfil para este usuario.", type: 'error' });
-                await supabase.auth.signOut();
-
-            } else {
+                setMessages((messagesData as any) || []);
+                setIsLoading(false);
+            } else if (event === 'SIGNED_OUT') {
                 setUserProfile(null);
                 setLoggedInClub(null);
+                setMessages([]);
                 setView('auth');
             }
         });
+        
+        // Return cleanup function for the subscription
+        return () => {
+            subscription?.unsubscribe();
+        };
 
-        return () => subscription.unsubscribe();
     }, [showToast, setIsLoading]);
 
     // --- Realtime Subscriptions ---
@@ -415,7 +457,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             type: 'message' as const,
             title: `Nuevo mensaje de ${senderName}`,
             message: text,
-            link: { view: 'chat' as const, params: { conversationId: selectedConversationId } },
+            link: { view: 'chat' as const, params: { conversationId: selectedConversationId } } as unknown as Json,
             user_id: otherUserId,
             payload: null,
         };
@@ -610,7 +652,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             message: `${userProfile.first_name} ${userProfile.last_name} quiere ser tu amigo.`,
             user_id: toId,
             read: false,
-            payload: { fromId: userProfile.id },
+            payload: { fromId: userProfile.id } as unknown as Json,
             link: null,
         };
 

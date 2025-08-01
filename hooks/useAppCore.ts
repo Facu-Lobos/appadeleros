@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { UserProfileData, ClubProfileData, CourtData, PublicMatch, Ranking, ChatMessage, AppView, PlayerAppView, ClubAppView, Notification, NotificationType, ToastMessage, Booking, Database, Tournament, Json, TournamentRegistration } from '../types';
@@ -62,7 +63,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         // If not a player, try to fetch club profile
         const { data: clubProfileData } = await supabase.from('club_profiles').select('*').eq('id', userId).single();
         if (clubProfileData) {
-            const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', userId);
+            const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false });
             const fullProfile = { ...clubProfileData, notifications: notificationsData || [] };
             setLoggedInClub(fullProfile as any);
             setUserProfile(null);
@@ -77,9 +78,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
 
      // --- Auth and Data Loading ---
     useEffect(() => {
-        // FIX: Add a guard at the very beginning of the effect.
-        // If supabase client is not initialized (due to missing .env vars),
-        // show an error and stop execution to prevent a crash.
         if (!supabase) {
             showToast({ text: "Error: No se pudo conectar a la base de datos. Revisa las variables de entorno.", type: 'error' });
             setIsLoading(false);
@@ -137,8 +135,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                     setInitialTournaments([]);
                 }
 
-
-                // 2. Check for an existing session and load its data
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
                     await fetchProfileAndSetState(session.user.id);
@@ -149,14 +145,12 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 console.error("Error during app initialization:", error);
                 showToast({ text: `Ocurrió un error inesperado al cargar la app.`, type: 'error' });
             } finally {
-                 // Set loading to false only after all initial data is loaded and auth checked
                 setIsLoading(false);
             }
         };
 
         initializeApp();
 
-        // 3. Set up auth listener for *subsequent* changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session) {
                 setIsLoading(true);
@@ -172,7 +166,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             }
         });
         
-        // Return cleanup function for the subscription
         return () => {
             subscription?.unsubscribe();
         };
@@ -186,7 +179,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
 
         if (!currentUserId) return;
 
-        // Listen for new messages for the current user
         const messageChannel = supabase.channel(`messages-for-${currentUserId}`)
             .on('postgres_changes', { 
                 event: 'INSERT', 
@@ -198,7 +190,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             })
             .subscribe();
 
-        // Listen for new notifications for the current user
         const notificationChannel = supabase.channel(`notifications-for-${currentUserId}`)
             .on('postgres_changes', { 
                 event: 'INSERT', 
@@ -215,7 +206,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             })
             .subscribe();
 
-        // Cleanup subscriptions on component unmount or user change
         return () => {
             supabase.removeChannel(messageChannel);
             supabase.removeChannel(notificationChannel);
@@ -227,7 +217,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!supabase) return;
         const { error } = await supabase.auth.signOut();
         if (error) showToast({ text: `Error al cerrar sesión: ${error.message}`, type: 'error'});
-        // State will be cleared by onAuthStateChange
     }, [showToast]);
     
     const handlePlayerLogin = useCallback(async ({ email, pass }: { email: string; pass: string }) => {
@@ -236,7 +225,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (error) {
             showToast({ text: error.message, type: 'error'});
         }
-        // onAuthStateChange handles success
     }, [showToast]);
 
     const handleClubLogin = useCallback(async ({ email, pass }: { email: string; pass: string }) => {
@@ -245,23 +233,15 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (error) {
             showToast({ text: error.message, type: 'error'});
         }
-        // onAuthStateChange handles success and checks if user is a club
     }, [showToast]);
 
     const handlePlayerRegister = async (profileData: Omit<UserProfileData, 'id' | 'avatar_url' | 'photos' | 'stats' | 'upcoming_matches' | 'match_history' | 'friends' | 'friendRequests' | 'notifications'>) => {
         if (!supabase) return;
-        const { email, password, ...metaData } = profileData;
+        const { email, password, first_name, last_name } = profileData;
 
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
-            email: email!,
+            email,
             password: password!,
-            options: {
-                data: {
-                    first_name: metaData.first_name,
-                    last_name: metaData.last_name,
-                    role: 'player'
-                }
-            }
         });
 
         if (signUpError) {
@@ -275,16 +255,16 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
 
         const profileToInsert: Database['public']['Tables']['player_profiles']['Insert'] = {
             id: authData.user.id,
-            email: email,
-            first_name: metaData.first_name,
-            last_name: metaData.last_name,
-            sex: metaData.sex,
-            country: metaData.country,
-            state: metaData.state,
-            city: metaData.city,
-            availability: metaData.availability,
-            category: metaData.category,
-            avatar_url: `https://api.dicebear.com/8.x/initials/svg?seed=${metaData.first_name}+${metaData.last_name}`,
+            email: profileData.email,
+            first_name: profileData.first_name,
+            last_name: profileData.last_name,
+            sex: profileData.sex,
+            country: profileData.country,
+            state: profileData.state,
+            city: profileData.city,
+            availability: profileData.availability,
+            category: profileData.category,
+            avatar_url: `https://api.dicebear.com/8.x/initials/svg?seed=${profileData.first_name}+${profileData.last_name}`,
             photos: [],
             stats: { matches: 0, wins: 0, losses: 0, winRate: 0, last30DaysTrend: 0 },
             upcoming_matches: [],
@@ -304,9 +284,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             type: 'welcome',
             title: '¡Bienvenido/a a APPadeleros!',
             message: 'Explora la app, busca clubes y encuentra tu próximo partido.',
-            read: false,
-            link: null,
-            payload: null,
         };
         await supabase.from('notifications').insert(welcomeNotification);
 
@@ -316,10 +293,10 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
 
     const handleClubRegister = async (profile: ClubProfileData, newCourts: CourtData[], photoFiles: File[]) => {
         if (!supabase) return;
-        const { email, password } = profile;
+        
         const { data: { user }, error: signUpError } = await supabase.auth.signUp({
-            email: email!,
-            password: password!,
+            email: profile.email,
+            password: profile.password!,
         });
 
         if (signUpError) {
@@ -381,19 +358,18 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const { error: courtsError } = await supabase.from('courts').insert(courtsToInsert);
         if (courtsError) {
              showToast({ text: `Falló la creación de las pistas: ${courtsError.message}`, type: 'error'});
-        } else {
-            const welcomeNotification: Database['public']['Tables']['notifications']['Insert'] = {
-                user_id: user.id,
-                type: 'welcome' as const,
-                title: `¡Bienvenido ${profile.name}!`,
-                message: 'Configura tus torneos, gestiona tus pistas y haz crecer tu comunidad.',
-                link: null,
-                payload: null,
-            };
-            await supabase.from('notifications').insert(welcomeNotification);
-            showToast({ text: "Usuario creado, se ha enviado la confirmacion correspondiente a su mail", type: 'success' });
-            setView('auth');
+             return;
         }
+        
+        const welcomeNotification: Database['public']['Tables']['notifications']['Insert'] = {
+            user_id: user.id,
+            type: 'welcome' as const,
+            title: `¡Bienvenido ${profile.name}!`,
+            message: 'Configura tus torneos, gestiona tus pistas y haz crecer tu comunidad.',
+        };
+        await supabase.from('notifications').insert(welcomeNotification);
+        showToast({ text: "Usuario creado, se ha enviado la confirmacion correspondiente a su mail", type: 'success' });
+        setView('auth');
     };
     
     const handleJoinMatch = useCallback(async (matchId: string) => {
@@ -419,8 +395,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             title: '¡Te has unido a un partido!',
             message: `Confirmada tu plaza en el partido de las ${match.time} en ${match.courtName}.`,
             user_id: userProfile.id,
-            link: null,
-            payload: null,
         };
         await supabase.from('notifications').insert(newNotification);
         showToast({ text: "Te has unido al partido.", type: 'success' });
@@ -459,7 +433,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             message: text,
             link: { view: 'chat' as const, params: { conversationId: selectedConversationId } } as unknown as Json,
             user_id: otherUserId,
-            payload: null,
         };
         await supabase.from('notifications').insert(notification);
         
@@ -480,25 +453,23 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
     const handleNotificationClick = useCallback(async (notification: Notification) => {
         if (notification.type === 'friend_request' || !supabase) return;
         
+        const currentUserId = userProfile?.id || loggedInClub?.id;
+        if (!currentUserId) return;
+
         const markAsRead = (notifications: Notification[]) => notifications.map(n => n.id === notification.id ? { ...n, read: true } : n);
 
         if (userProfile) setUserProfile(prev => ({ ...prev!, notifications: markAsRead(prev!.notifications) }));
         if (loggedInClub) setLoggedInClub(prev => ({ ...prev!, notifications: markAsRead(prev!.notifications) }));
         
-        const update: Database['public']['Tables']['notifications']['Update'] = { read: true };
-        await supabase.from('notifications').update(update).eq('id', notification.id);
+        await supabase.from('notifications').update({ read: true }).eq('id', notification.id);
 
         setIsNotificationsPanelOpen(false);
 
         if (notification.link?.view === 'chat' && notification.link.params?.conversationId) {
-            handleStartChat(notification.link.params.conversationId.replace(userProfile?.id || loggedInClub!.id, "").replace("_",""));
+            handleStartChat(notification.link.params.conversationId.replace(currentUserId, "").replace("_",""));
         } else if (notification.link?.view === 'tournaments' && notification.link.params?.tournamentId) {
-             if(loggedInClub) {
-                setClubView('tournaments');
-                // setSelectedTournamentId(notification.link.params.tournamentId); This state is in another hook now
-             } else if (userProfile) {
-                setPlayerView('tournaments');
-             }
+             if(loggedInClub) setClubView('tournaments');
+             if (userProfile) setPlayerView('tournaments');
         }
 
     }, [userProfile, loggedInClub]);
@@ -507,12 +478,12 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!supabase) return;
         const markAllAsRead = (notifications: Notification[]) => notifications.map(n => ({ ...n, read: true }));
         const currentUserId = userProfile?.id || loggedInClub?.id;
+        if (!currentUserId) return;
         
         if (userProfile) setUserProfile(prev => ({ ...prev!, notifications: markAllAsRead(prev!.notifications) }));
         if (loggedInClub) setLoggedInClub(prev => ({ ...prev!, notifications: markAllAsRead(prev!.notifications) }));
 
-        const update: Database['public']['Tables']['notifications']['Update'] = { read: true };
-        await supabase.from('notifications').update(update).eq('user_id', currentUserId).eq('read', false);
+        await supabase.from('notifications').update({ read: true }).eq('user_id', currentUserId).eq('read', false);
     }, [userProfile, loggedInClub]);
 
     const handleAuthNavigate = (destination: 'player-login' | 'club-login' | 'player-signup' | 'club-signup') => {
@@ -528,7 +499,8 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                     const blob = dataURLtoBlob(photo);
                     if (blob) {
                         const filePath = `gallery/${loggedInClub.id}/${Date.now()}.png`;
-                        await supabase.storage.from('club-photos').upload(filePath, blob, { upsert: true });
+                        const { error } = await supabase.storage.from('club-photos').upload(filePath, blob, { upsert: true });
+                         if (error) { console.error(error); return null; }
                         const { data: { publicUrl } } = supabase.storage.from('club-photos').getPublicUrl(filePath);
                         return publicUrl;
                     }
@@ -539,9 +511,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         
         const profileToUpdate: Database['public']['Tables']['club_profiles']['Update'] = {
             name: updatedProfile.name,
-            country: updatedProfile.country,
-            state: updatedProfile.state,
-            city: updatedProfile.city,
             opening_time: updatedProfile.opening_time,
             closing_time: updatedProfile.closing_time,
             opening_days: updatedProfile.opening_days,
@@ -572,19 +541,19 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             const blob = dataURLtoBlob(updatedProfile.avatar_url);
             if (blob) {
                 const filePath = `avatars/${userProfile.id}/${Date.now()}.png`;
-                await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+                await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true, contentType: blob.type });
                 const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
                 finalAvatarUrl = publicUrl;
             }
         }
         
         const finalPhotos = await Promise.all(
-            updatedProfile.photos.map(async (photo) => {
+            (updatedProfile.photos || []).map(async (photo) => {
                 if (photo.startsWith('data:image')) {
                     const blob = dataURLtoBlob(photo);
                     if (blob) {
                         const filePath = `gallery/${userProfile.id}/${Date.now()}.png`;
-                        await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+                        await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true, contentType: blob.type });
                         const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
                         return publicUrl;
                     }
@@ -651,9 +620,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             title: 'Nueva solicitud de amistad',
             message: `${userProfile.first_name} ${userProfile.last_name} quiere ser tu amigo.`,
             user_id: toId,
-            read: false,
             payload: { fromId: userProfile.id } as unknown as Json,
-            link: null,
         };
 
         const { error } = await supabase.from('notifications').insert(newNotification);
@@ -704,8 +671,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 title: '¡Solicitud de amistad aceptada!',
                 message: `${userProfile.first_name} ${userProfile.last_name} ha aceptado tu solicitud.`,
                 user_id: fromId,
-                link: null,
-                payload: null,
             };
             await supabase.from('notifications').insert(acceptNotification);
         }
@@ -814,4 +779,3 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         activeNotifications,
     };
 }
-

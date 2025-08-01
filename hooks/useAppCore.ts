@@ -237,7 +237,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
 
     const handlePlayerRegister = async (profileData: Omit<UserProfileData, 'id' | 'avatar_url' | 'photos' | 'stats' | 'upcoming_matches' | 'match_history' | 'friends' | 'friendRequests' | 'notifications'>) => {
         if (!supabase) return;
-        const { email, password, first_name, last_name } = profileData;
+        const { email, password } = profileData;
 
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
             email,
@@ -271,24 +271,31 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             match_history: [],
             friends: [],
         };
+        
+        try {
+            const { error: profileError } = await supabase.from('player_profiles').insert(profileToInsert);
+            if (profileError) throw profileError;
 
-        const { error: profileError } = await supabase.from('player_profiles').insert(profileToInsert);
+            const welcomeNotification: Database['public']['Tables']['notifications']['Insert'] = {
+                user_id: authData.user.id,
+                type: 'welcome',
+                title: '¡Bienvenido/a a APPadeleros!',
+                message: 'Explora la app, busca clubes y encuentra tu próximo partido.',
+            };
+            await supabase.from('notifications').insert(welcomeNotification);
 
-        if (profileError) {
-            showToast({ text: `Falló la creación del perfil: ${profileError.message}`, type: 'error' });
-            return;
+            showToast({ text: "Usuario creado, se ha enviado la confirmacion correspondiente a su mail", type: 'success' });
+            setView('auth');
+
+        } catch (error: any) {
+            if (error.message && (error.message.includes('row-level security') || error.message.includes('violates row-level security policy'))) {
+                console.error('Error de RLS al crear perfil de jugador:', error);
+                showToast({ text: 'Error de permisos al crear perfil. Por favor, contacta a soporte.', type: 'error' });
+            } else {
+                console.error('Error al crear perfil de jugador:', error);
+                showToast({ text: `Falló la creación del perfil: ${error.message}`, type: 'error' });
+            }
         }
-
-        const welcomeNotification: Database['public']['Tables']['notifications']['Insert'] = {
-            user_id: authData.user.id,
-            type: 'welcome',
-            title: '¡Bienvenido/a a APPadeleros!',
-            message: 'Explora la app, busca clubes y encuentra tu próximo partido.',
-        };
-        await supabase.from('notifications').insert(welcomeNotification);
-
-        showToast({ text: "Usuario creado, se ha enviado la confirmacion correspondiente a su mail", type: 'success' });
-        setView('auth');
     };
 
     const handleClubRegister = async (profile: ClubProfileData, newCourts: CourtData[], photoFiles: File[]) => {
@@ -307,69 +314,73 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             showToast({ text: "El registro falló, por favor intenta de nuevo.", type: 'error'});
             return;
         }
-
-        const photoUrls = await Promise.all(
-            photoFiles.map(async (file) => {
-                const filePath = `gallery/${user.id}/${Date.now()}_${file.name}`;
-                const { error: uploadError } = await supabase.storage.from('club-photos').upload(filePath, file);
-                if (uploadError) {
-                    console.error('Error uploading photo:', uploadError);
-                    return null;
-                }
-                const { data: { publicUrl } } = supabase.storage.from('club-photos').getPublicUrl(filePath);
-                return publicUrl;
-            })
-        );
         
-        const validUrls = photoUrls.filter(url => url !== null) as string[];
-        
-        const profileToInsert: Database['public']['Tables']['club_profiles']['Insert'] = {
-            id: user.id,
-            email: profile.email,
-            member_id: profile.member_id,
-            name: profile.name,
-            country: profile.country,
-            state: profile.state,
-            city: profile.city,
-            total_courts: newCourts.length,
-            opening_time: profile.opening_time,
-            closing_time: profile.closing_time,
-            opening_days: profile.opening_days,
-            status: profile.status,
-            turn_duration: profile.turn_duration,
-            has_buffet: profile.has_buffet,
-            photos: validUrls,
-        };
-
-        const { error: profileError } = await supabase.from('club_profiles').insert(profileToInsert);
-        if (profileError) {
-             showToast({ text: `Falló la creación del perfil: ${profileError.message}`, type: 'error'});
-             return;
+        try {
+            const photoUrls = await Promise.all(
+                photoFiles.map(async (file) => {
+                    const filePath = `gallery/${user.id}/${Date.now()}_${file.name}`;
+                    const { error: uploadError } = await supabase.storage.from('club-photos').upload(filePath, file);
+                    if (uploadError) {
+                        console.error('Error uploading photo:', uploadError);
+                        return null;
+                    }
+                    const { data: { publicUrl } } = supabase.storage.from('club-photos').getPublicUrl(filePath);
+                    return publicUrl;
+                })
+            );
+            
+            const validUrls = photoUrls.filter(url => url !== null) as string[];
+            
+            const profileToInsert: Database['public']['Tables']['club_profiles']['Insert'] = {
+                id: user.id,
+                email: profile.email,
+                member_id: profile.member_id,
+                name: profile.name,
+                country: profile.country,
+                state: profile.state,
+                city: profile.city,
+                total_courts: newCourts.length,
+                opening_time: profile.opening_time,
+                closing_time: profile.closing_time,
+                opening_days: profile.opening_days,
+                status: profile.status,
+                turn_duration: profile.turn_duration,
+                has_buffet: profile.has_buffet,
+                photos: validUrls,
+            };
+    
+            const { error: profileError } = await supabase.from('club_profiles').insert(profileToInsert);
+             if (profileError) throw profileError;
+    
+            const courtsToInsert: Database['public']['Tables']['courts']['Insert'][] = newCourts.map(court => ({
+                name: court.name,
+                type: court.type,
+                location: court.location,
+                surface: court.surface,
+                club_id: user.id,
+                club_name: profile.name
+            }));
+            const { error: courtsError } = await supabase.from('courts').insert(courtsToInsert);
+            if (courtsError) throw courtsError;
+            
+            const welcomeNotification: Database['public']['Tables']['notifications']['Insert'] = {
+                user_id: user.id,
+                type: 'welcome' as const,
+                title: `¡Bienvenido ${profile.name}!`,
+                message: 'Configura tus torneos, gestiona tus pistas y haz crecer tu comunidad.',
+            };
+            await supabase.from('notifications').insert(welcomeNotification);
+            showToast({ text: "Usuario creado, se ha enviado la confirmacion correspondiente a su mail", type: 'success' });
+            setView('auth');
+        } catch (error: any) {
+             if (error.message && (error.message.includes('row-level security') || error.message.includes('violates row-level security policy'))) {
+                console.error('Error de RLS al crear perfil de club:', error);
+                showToast({ text: 'Error de permisos al crear perfil. Por favor, contacta a soporte.', type: 'error' });
+            } else {
+                console.error('Error al crear perfil de club:', error);
+                showToast({ text: `Falló la creación del perfil: ${error.message}`, type: 'error' });
+            }
         }
-
-        const courtsToInsert: Database['public']['Tables']['courts']['Insert'][] = newCourts.map(court => ({
-            name: court.name,
-            type: court.type,
-            location: court.location,
-            surface: court.surface,
-            club_id: user.id,
-            club_name: profile.name
-        }));
-        const { error: courtsError } = await supabase.from('courts').insert(courtsToInsert);
-        if (courtsError) {
-             showToast({ text: `Falló la creación de las pistas: ${courtsError.message}`, type: 'error'});
-             return;
-        }
-        
-        const welcomeNotification: Database['public']['Tables']['notifications']['Insert'] = {
-            user_id: user.id,
-            type: 'welcome' as const,
-            title: `¡Bienvenido ${profile.name}!`,
-            message: 'Configura tus torneos, gestiona tus pistas y haz crecer tu comunidad.',
-        };
-        await supabase.from('notifications').insert(welcomeNotification);
-        showToast({ text: "Usuario creado, se ha enviado la confirmacion correspondiente a su mail", type: 'success' });
-        setView('auth');
     };
     
     const handleJoinMatch = useCallback(async (matchId: string) => {
@@ -541,9 +552,13 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             const blob = dataURLtoBlob(updatedProfile.avatar_url);
             if (blob) {
                 const filePath = `avatars/${userProfile.id}/${Date.now()}.png`;
-                await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true, contentType: blob.type });
+                const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true, contentType: blob.type });
+                 if (uploadError) {
+                    showToast({ text: `Error al subir la nueva foto: ${uploadError.message}`, type: 'error' });
+                    return; 
+                }
                 const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-                finalAvatarUrl = publicUrl;
+                finalAvatarUrl = `${publicUrl}?t=${new Date().getTime()}`;
             }
         }
         
@@ -552,8 +567,12 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 if (photo.startsWith('data:image')) {
                     const blob = dataURLtoBlob(photo);
                     if (blob) {
-                        const filePath = `gallery/${userProfile.id}/${Date.now()}.png`;
-                        await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true, contentType: blob.type });
+                        const filePath = `player-photos/${userProfile.id}/${Date.now()}_${Math.random()}.png`;
+                        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true, contentType: blob.type });
+                        if (uploadError) {
+                            console.error('Error al subir foto de galería:', uploadError);
+                            return null;
+                        }
                         const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
                         return publicUrl;
                     }
@@ -562,6 +581,8 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             })
         );
         
+        const validFinalPhotos = finalPhotos.filter(p => p !== null) as string[];
+
         const profileToUpdate: Database['public']['Tables']['player_profiles']['Update'] = {
             first_name: updatedProfile.first_name,
             last_name: updatedProfile.last_name,
@@ -572,7 +593,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             availability: updatedProfile.availability,
             category: updatedProfile.category,
             avatar_url: finalAvatarUrl,
-            photos: finalPhotos.filter(p => p !== null) as string[],
+            photos: validFinalPhotos,
         };
 
         const { data, error } = await supabase.from('player_profiles').update(profileToUpdate).eq('id', userProfile.id).select().single();

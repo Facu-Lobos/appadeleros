@@ -23,14 +23,10 @@ const ConversationPage: React.FC<ConversationPageProps> = ({ conversationId, mes
     }, [messages, conversationId]);
 
     const otherUserId = useMemo(() => {
-        // Find a message in the conversation to determine the other user
-        const messageInConversation = messages.find(m => m.conversation_id === conversationId);
-        if (!messageInConversation) {
-            // Fallback for new conversations initiated by current user
-            return conversationId.replace(currentUserId, '').replace('_', '');
-        }
-        return messageInConversation.sender_id === currentUserId ? messageInConversation.receiver_id : messageInConversation.sender_id;
-    }, [conversationId, messages, currentUserId]);
+        const ids = conversationId.split('_');
+        const otherId = ids.find(id => id !== currentUserId);
+        return otherId;
+    }, [conversationId, currentUserId]);
     
     const otherUser = useMemo(() => {
         return allUsers.find(u => u.id === otherUserId);

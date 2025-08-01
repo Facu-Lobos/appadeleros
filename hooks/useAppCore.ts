@@ -310,7 +310,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         };
         await supabase.from('notifications').insert(welcomeNotification);
 
-        showToast({ text: "¡Registro exitoso! Revisa tu email para confirmar tu cuenta.", type: 'success' });
+        showToast({ text: "Usuario creado, se ha enviado la confirmacion correspondiente a su mail", type: 'success' });
         setView('auth');
     };
 
@@ -391,7 +391,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 payload: null,
             };
             await supabase.from('notifications').insert(welcomeNotification);
-            showToast({ text: "¡Club registrado con éxito! Revisa tu email para confirmar la cuenta.", type: 'success' });
+            showToast({ text: "Usuario creado, se ha enviado la confirmacion correspondiente a su mail", type: 'success' });
             setView('auth');
         }
     };
@@ -568,7 +568,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!supabase || !userProfile) return;
         
         let finalAvatarUrl = updatedProfile.avatar_url;
-        if (updatedProfile.avatar_url.startsWith('data:image')) {
+        if (updatedProfile.avatar_url && updatedProfile.avatar_url.startsWith('data:image')) {
             const blob = dataURLtoBlob(updatedProfile.avatar_url);
             if (blob) {
                 const filePath = `avatars/${userProfile.id}/${Date.now()}.png`;
@@ -641,7 +641,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         
         const targetUser = allPlayers.find(p => p.id === toId);
         if (!targetUser) return;
-        if (userProfile.friends.includes(toId)) {
+        if (userProfile.friends && userProfile.friends.includes(toId)) {
             showToast({ text: "Ya sois amigos.", type: 'info'});
             return;
         }
@@ -667,7 +667,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
     const handleAcceptFriendRequest = useCallback(async (fromId: string) => {
         if (!userProfile || !supabase) return;
 
-        const updatedFriends = [...userProfile.friends, fromId];
+        const updatedFriends = [...(userProfile.friends || []), fromId];
         const userUpdate: Database['public']['Tables']['player_profiles']['Update'] = { friends: updatedFriends };
         const { error: userError } = await supabase
             .from('player_profiles')
@@ -727,7 +727,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
     const handleRemoveFriend = useCallback(async (friendId: string) => {
         if (!userProfile || !supabase || !window.confirm("¿Seguro que quieres eliminar a este amigo?")) return;
 
-        const updatedFriends = userProfile.friends.filter(id => id !== friendId);
+        const updatedFriends = userProfile.friends ? userProfile.friends.filter(id => id !== friendId) : [];
         const userUpdate: Database['public']['Tables']['player_profiles']['Update'] = { friends: updatedFriends };
         const { error: userError } = await supabase.from('player_profiles').update(userUpdate).eq('id', userProfile.id);
 

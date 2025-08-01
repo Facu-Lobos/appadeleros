@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { UserProfileData, ClubProfileData } from '../types';
 import { MagnifyingGlassIcon, BuildingStorefrontIcon } from '../constants';
@@ -34,7 +35,7 @@ const CommunityPage: React.FC<CommunityPageProps> = ({ currentUser, allPlayers, 
     }, [searchTerm, allClubs, isClubView]);
 
     const getFriendshipStatus = (player: UserProfileData) => {
-        if (!('friends' in currentUser)) return 'none';
+        if (!('friends' in currentUser) || !currentUser.friends) return 'none';
 
         const friends = currentUser.friends || [];
         const notifications = currentUser.notifications || [];
@@ -58,6 +59,7 @@ const CommunityPage: React.FC<CommunityPageProps> = ({ currentUser, allPlayers, 
         }
     };
 
+    const getAvatar = (p: UserProfileData) => p.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${p.first_name} ${p.last_name}`;
 
     return (
         <div className="space-y-8">
@@ -95,7 +97,7 @@ const CommunityPage: React.FC<CommunityPageProps> = ({ currentUser, allPlayers, 
                                     const status = getFriendshipStatus(player);
                                     return (
                                         <div key={player.id} className="flex items-center gap-4 bg-dark-secondary p-3 rounded-lg">
-                                            <img src={player.avatar_url} alt={player.first_name} className="w-12 h-12 rounded-full object-cover" />
+                                            <img src={getAvatar(player)} alt={player.first_name} className="w-12 h-12 rounded-full object-cover" />
                                             <div className="flex-1">
                                                 <p className="font-bold text-white">{player.first_name} {player.last_name}</p>
                                                 <p className="text-sm text-light-secondary">Categoría: {player.category}</p>

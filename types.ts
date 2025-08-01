@@ -93,7 +93,7 @@ export interface UserProfileData {
   city: string;
   availability: PlayerAvailability[];
   category: PlayerCategory;
-  avatar_url: string;
+  avatar_url: string | null;
   photos: string[];
   stats: {
       matches: number;

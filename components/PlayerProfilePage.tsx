@@ -148,6 +148,8 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
         }
     };
     
+    const getAvatar = (p: UserProfileData) => p.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${p.first_name} ${p.last_name}`;
+
     if (isEditing) {
         return (
             <div className="relative flex size-full flex-col text-white pb-10 space-y-6">
@@ -156,7 +158,7 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
                 {/* Avatar and Name */}
                 <div className="flex items-center gap-4">
                     <div className="relative">
-                       <img src={editedProfile.avatar_url} alt="Avatar" className="w-24 h-24 rounded-full bg-dark-tertiary border-2 border-primary object-cover" />
+                       <img src={getAvatar(editedProfile)} alt="Avatar" className="w-24 h-24 rounded-full bg-dark-tertiary border-2 border-primary object-cover" />
                        <input type="file" ref={avatarInputRef} onChange={handleAvatarFileChange} accept="image/*" className="hidden" />
                        <button onClick={() => avatarInputRef.current?.click()} className="absolute bottom-0 right-0 bg-primary text-dark-primary rounded-full p-1.5">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
@@ -240,7 +242,7 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
                     <div className="flex gap-4 flex-col items-center">
                         <div
                             className="bg-center bg-no-repeat aspect-square bg-cover rounded-full min-h-32 w-32 border-2 border-primary"
-                            style={{ backgroundImage: `url("${profile.avatar_url}")` }}
+                            style={{ backgroundImage: `url("${getAvatar(profile)}")` }}
                         ></div>
                         <div className="flex flex-col items-center justify-center">
                             <p className="text-white text-[22px] font-bold leading-tight tracking-[-0.015em] text-center">{profile.first_name} {profile.last_name}</p>
@@ -281,7 +283,7 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
                             if (!friend) return null;
                             return (
                                 <div key={friendId} className="flex items-center gap-4 bg-dark-secondary p-3 rounded-lg">
-                                    <img src={friend.avatar_url} alt={friend.first_name} className="w-12 h-12 rounded-full object-cover" />
+                                    <img src={getAvatar(friend)} alt={friend.first_name} className="w-12 h-12 rounded-full object-cover" />
                                     <div className="flex-1">
                                         <p className="font-bold text-white">{friend.first_name} {friend.last_name}</p>
                                         <p className="text-sm text-light-secondary">Categoría: {friend.category}</p>

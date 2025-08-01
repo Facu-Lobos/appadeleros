@@ -1,4 +1,5 @@
 
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { ChatMessage, UserProfileData, ClubProfileData } from '../types';
 import { TrashIcon, EllipsisVerticalIcon } from '../constants';
@@ -64,7 +65,7 @@ const ChatListPage: React.FC<ChatListPageProps> = ({ messages, currentUserId, al
                     const isPlayer = (user: any): user is UserProfileData => 'first_name' in user;
 
                     const name = otherUser ? (isPlayer(otherUser) ? `${otherUser.first_name} ${otherUser.last_name}` : otherUser.name) : 'Usuario desconocido';
-                    const avatarUrl = otherUser ? (isPlayer(otherUser) ? otherUser.avatar_url : `https://api.dicebear.com/8.x/initials/svg?seed=${otherUser.name}`) : '';
+                    const avatarUrl = otherUser ? (isPlayer(otherUser) ? (otherUser.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${name}`) : `https://api.dicebear.com/8.x/initials/svg?seed=${otherUser.name}`) : `https://api.dicebear.com/8.x/initials/svg?seed=User`;
 
                     return (
                         <div 

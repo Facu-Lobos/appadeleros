@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { UserProfileData, PlayerCategory, PlayerAvailability } from '../types';
 import { PLAYER_CATEGORIES, LOCATIONS, EllipsisVerticalIcon, ChatBubbleIcon, TrashIcon } from '../constants';
@@ -103,12 +97,15 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
     };
     
     const handleAvailabilityChange = (item: PlayerAvailability) => {
-        setEditedProfile(prev => ({
-            ...prev,
-            availability: prev.availability.includes(item)
-                ? prev.availability.filter(i => i !== item)
-                : [...prev.availability, item],
-        }));
+        setEditedProfile(prev => {
+            const currentAvailability = prev.availability || [];
+            return {
+                ...prev,
+                availability: currentAvailability.includes(item)
+                    ? currentAvailability.filter(i => i !== item)
+                    : [...currentAvailability, item],
+            };
+        });
     };
     
     const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,7 +194,7 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
                     <label className="block text-sm font-medium text-light-secondary mb-2">Disponibilidad</label>
                     <div className="flex flex-wrap gap-2">
                         {(['Mañanas', 'Tardes', 'Noches', 'Fines de semana', 'Cualquiera'] as PlayerAvailability[]).map(item => (
-                            <button key={item} type="button" onClick={() => handleAvailabilityChange(item)} className={`px-3 py-1 text-sm rounded-full transition-colors ${editedProfile.availability.includes(item) ? 'bg-primary text-dark-primary font-bold' : 'bg-dark-tertiary text-light-primary'}`}>
+                            <button key={item} type="button" onClick={() => handleAvailabilityChange(item)} className={`px-3 py-1 text-sm rounded-full transition-colors ${ (editedProfile.availability || []).includes(item) ? 'bg-primary text-dark-primary font-bold' : 'bg-dark-tertiary text-light-primary'}`}>
                                 {item}
                             </button>
                         ))}
@@ -278,7 +275,7 @@ const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ profile, allPlaye
                  <div className="px-4 py-6">
                     <h2 className="text-white text-[22px] font-bold leading-tight tracking-[-0.015em] pb-3">Amigos</h2>
                      <div className="space-y-3">
-                        {profile.friends.map(friendId => {
+                        {(profile.friends || []).map(friendId => {
                             const friend = allPlayers.find(p => p.id === friendId);
                             if (!friend) return null;
                             return (

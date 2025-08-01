@@ -17,8 +17,8 @@ const TournamentRegistrationModal: React.FC<TournamentRegistrationModalProps> = 
     const [error, setError] = useState('');
 
     const friends = useMemo(() => {
-        return allPlayers.filter(p => currentUser.friends.includes(p.id));
-    }, [allPlayers, currentUser]);
+        return allPlayers.filter(p => (currentUser.friends || []).includes(p.id));
+    }, [allPlayers, currentUser.friends]);
     
     if (!isOpen) return null;
 

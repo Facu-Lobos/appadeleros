@@ -1,7 +1,4 @@
 
-
-
-
 import React, { useState, useCallback } from 'react';
 import { BookingStatus } from './types';
 import Header from './components/Header';
@@ -243,19 +240,28 @@ export const App: React.FC = () => {
     }
 
     // Auth screens
-    switch (core.view) {
-        case 'player-login':
-            return <PlayerLogin onLogin={core.handlePlayerLogin} onBack={() => core.setView('auth')} onForgotPassword={() => core.setView('forgot-password')} />;
-        case 'club-login':
-            return <ClubLogin onLogin={core.handleClubLogin} onBack={() => core.setView('auth')} onForgotPassword={() => core.setView('forgot-password')}/>;
-        case 'player-signup':
-            return <PlayerRegistration onRegister={core.handlePlayerRegister} onBack={() => core.setView('auth')} />;
-        case 'club-signup':
-            return <ClubRegistration onRegister={core.handleClubRegister} onBack={() => core.setView('auth')} />;
-        case 'forgot-password':
-            return <ForgotPassword onRequest={core.handlePasswordReset} onBack={() => core.setView('auth')} />;
-        case 'auth':
-        default:
-            return <AuthScreen onNavigate={core.handleAuthNavigate} />;
+    const AuthContent = () => {
+        switch (core.view) {
+            case 'player-login':
+                return <PlayerLogin onLogin={core.handlePlayerLogin} onBack={() => core.setView('auth')} onForgotPassword={() => core.setView('forgot-password')} />;
+            case 'club-login':
+                return <ClubLogin onLogin={core.handleClubLogin} onBack={() => core.setView('auth')} onForgotPassword={() => core.setView('forgot-password')}/>;
+            case 'player-signup':
+                return <PlayerRegistration onRegister={core.handlePlayerRegister} onBack={() => core.setView('auth')} />;
+            case 'club-signup':
+                return <ClubRegistration onRegister={core.handleClubRegister} onBack={() => core.setView('auth')} />;
+            case 'forgot-password':
+                return <ForgotPassword onRequest={core.handlePasswordReset} onBack={() => core.setView('auth')} />;
+            case 'auth':
+            default:
+                return <AuthScreen onNavigate={core.handleAuthNavigate} />;
+        }
     }
+
+    return (
+        <>
+            <AuthContent />
+            <Toast message={toast} onClose={() => setToast(null)} />
+        </>
+    );
 };

@@ -18,7 +18,7 @@ const PlayerRegistration: React.FC<PlayerRegistrationProps> = ({ onRegister, onB
     
     const [country, setCountry] = useState('Argentina');
     const [state, setState] = useState('Buenos Aires');
-    const [city, setCity] = useState('');
+    const [city, setCity] = useState('Villa Gesell');
     
     const [states, setStates] = useState<string[]>([]);
     const [cities, setCities] = useState<string[]>([]);

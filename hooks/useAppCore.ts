@@ -1,7 +1,5 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-
-import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { UserProfileData, ClubProfileData, CourtData, PublicMatch, Ranking, ChatMessage, AppView, PlayerAppView, ClubAppView, Notification, NotificationType, ToastMessage, Booking, Database, Tournament, Json, TournamentRegistration } from '../types';
 
@@ -48,6 +46,14 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
 
+    const clearUserSession = useCallback(() => {
+        setUserProfile(null);
+        setLoggedInClub(null);
+        setMessages([]);
+        setNotifications([]);
+        setView('auth');
+    }, []);
+
     // --- Auth and Data Loading ---
     useEffect(() => {
         if (!supabase) {
@@ -55,11 +61,59 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             setIsLoading(false);
             return;
         }
+        
+        const loadUser = async (user: any) => {
+            if (!user) {
+                clearUserSession();
+                return;
+            }
 
-        const fetchInitialData = async () => {
-             setIsLoading(true);
-             try {
-                 const [
+            // Fetch profile and other data in a safe, sequential manner
+            try {
+                // Try fetching as a player first
+                const { data: playerProfile, error: playerError } = await supabase.from('player_profiles').select('*').eq('id', user.id).single();
+                if (playerProfile) {
+                    const { data: messagesData } = await supabase.from('messages').select('*').or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+                    const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', user.id);
+                    
+                    setMessages(messagesData || []);
+                    setNotifications(notificationsData || []);
+                    setUserProfile(playerProfile as unknown as UserProfileData);
+                    setLoggedInClub(null);
+                    return;
+                }
+
+                // If not a player, try fetching as a club
+                const { data: clubProfile, error: clubError } = await supabase.from('club_profiles').select('*').eq('id', user.id).single();
+                if (clubProfile) {
+                    const { data: messagesData } = await supabase.from('messages').select('*').or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+                    const { data: notificationsData } = await supabase.from('notifications').select('*').eq('user_id', user.id);
+                    
+                    setMessages(messagesData || []);
+                    setNotifications(notificationsData || []);
+                    setLoggedInClub(clubProfile as unknown as ClubProfileData);
+                    setUserProfile(null);
+                    return;
+                }
+                
+                // If neither profile is found, log out the user.
+                // This can happen if the profile creation failed or RLS is incorrect.
+                showToast({ text: "No se encontró un perfil para este usuario. Se cerrará la sesión.", type: 'error' });
+                await supabase.auth.signOut();
+
+            } catch (error: any) {
+                console.error("Error loading user session:", error);
+                showToast({ text: `Error al cargar perfil: ${error.message}`, type: 'error' });
+                await supabase.auth.signOut();
+            }
+        };
+
+
+        const initializeApp = async () => {
+            setIsLoading(true);
+            try {
+                // Step 1: Fetch all public data ONCE.
+                const [
                     { data: clubsData, error: clubsError },
                     { data: courtsData, error: courtsError },
                     { data: playersData, error: playersError },
@@ -75,156 +129,117 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                     supabase.from('tournament_registrations').select('*'),
                 ]);
 
-                if (clubsError) console.error("Error fetching clubs:", clubsError.message);
+                if (clubsError) throw clubsError;
                 setAllClubs((clubsData as any) || []);
 
-                if (courtsError) console.error("Error fetching courts:", courtsError.message);
+                if (courtsError) throw courtsError;
                 setBaseCourts((courtsData as any) || []);
-
-                if (playersError) console.error("Error fetching players:", playersError.message);
+                
+                if (playersError) throw playersError;
                 setAllPlayers((playersData as any) || []);
-
-                if (rankingsError) console.error("Error fetching rankings:", rankingsError.message);
+                
+                if (rankingsError) throw rankingsError;
                 setRankings((rankingsData as any) || []);
-
+                
+                if (tournamentsError || registrationsError) throw new Error(tournamentsError?.message || registrationsError?.message);
                 if (tournamentsData && registrationsData) {
                     const tournamentsWithRegistrations = tournamentsData.map(t => ({
                         ...t,
                         tournament_registrations: registrationsData.filter(r => r.tournament_id === t.id) || []
                     }));
                     setInitialTournaments(tournamentsWithRegistrations as any);
-                } else {
-                    if (tournamentsError) console.error("Error fetching tournaments:", tournamentsError.message);
-                    if (registrationsError) console.error("Error fetching registrations:", registrationsError.message);
                 }
-
-                // Now check for active session
+                
+                // Step 2: Check for an existing session and load user data.
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user) {
-                    await fetchUserSessionData(session.user.id);
+                    await loadUser(session.user);
                 }
-             } catch (e: any) {
-                showToast({ text: `Error al cargar datos: ${e.message}`, type: 'error' });
-             } finally {
+            } catch (error: any) {
+                 console.error("Initialization Error:", error);
+                 showToast({ text: `Error al iniciar la aplicación: ${error.message}`, type: 'error' });
+            } finally {
                 setIsLoading(false);
-             }
-        }
-
-        const fetchUserSessionData = async (userId: string) => {
-            const playerProfileRes = await supabase.from('player_profiles').select('*, notifications(*)').eq('id', userId).single();
-            if (playerProfileRes.data) {
-                const profile = playerProfileRes.data as unknown as UserProfileData;
-                const messagesRes = await supabase.from('messages').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
-                
-                setMessages(messagesRes.data || []);
-                setNotifications(profile.notifications || []);
-                setUserProfile(profile);
-                setLoggedInClub(null);
-                return;
             }
-
-            const clubProfileRes = await supabase.from('club_profiles').select('*, notifications(*)').eq('id', userId).single();
-            if (clubProfileRes.data) {
-                const clubProfile = clubProfileRes.data as unknown as ClubProfileData;
-                const messagesRes = await supabase.from('messages').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
-
-                setMessages(messagesRes.data || []);
-                setNotifications(clubProfile.notifications || []);
-                setLoggedInClub(clubProfile);
-                setUserProfile(null);
-                return;
-            }
-            
-            showToast({ text: "No se encontró un perfil para este usuario. Se cerrará la sesión.", type: 'error' });
-            await supabase.auth.signOut();
         };
-        
-        fetchInitialData();
 
+        initializeApp();
+
+        // Step 3: Auth listener to handle session changes.
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            setIsLoading(true);
-            if (session?.user) {
-                await fetchInitialData(); // Refetch all data to be sure
-            } else {
-                setUserProfile(null);
-                setLoggedInClub(null);
-                setMessages([]);
-                setNotifications([]);
-                setView('auth');
+            if (event === 'SIGNED_OUT') {
+                clearUserSession();
+            } else if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+                await loadUser(session.user);
             }
-            setIsLoading(false);
         });
     
         return () => {
             subscription?.unsubscribe();
         };
     
-    }, [showToast]);
-
+    }, [showToast, clearUserSession]);
+    
     // --- Realtime Subscriptions ---
     useEffect(() => {
         if (!supabase) return;
         const currentUserId = userProfile?.id || loggedInClub?.id;
         
-        supabase.removeAllChannels(); // Clean up previous channels
+        let realtimeChannel = supabase.channel(`app-realtime-channel`);
+        supabase.removeAllChannels(); // Clean up previous channels before subscribing
 
-        if (!currentUserId) return;
-
-        const realtimeChannel = supabase.channel(`app-realtime-channel-${currentUserId}`)
-            .on('postgres_changes', { 
-                event: 'INSERT', 
-                schema: 'public', 
-                table: 'messages', 
-                filter: `receiver_id=eq.${currentUserId}` 
-            }, (payload) => {
-                const newMessage = payload.new as ChatMessage;
-                setMessages(prev => [...prev, newMessage]);
-                const sender = allPlayers.find(p => p.id === newMessage.sender_id) || allClubs.find(c => c.id === newMessage.sender_id);
-                const senderName = sender ? ('first_name' in sender ? `${sender.first_name}` : sender.name) : 'un usuario';
-                showToast({text: `Nuevo mensaje de ${senderName}`, type: 'info'});
-            })
-             .on('postgres_changes', { 
-                event: 'INSERT', 
-                schema: 'public', 
-                table: 'notifications', 
-                filter: `user_id=eq.${currentUserId}` 
-            }, (payload) => {
-                const newNotification = payload.new as Notification;
-                setNotifications(prev => [newNotification, ...prev]);
-                showToast({text: newNotification.title, type: 'info'});
-            })
-             .on('postgres_changes', { 
-                event: 'INSERT', 
-                schema: 'public', 
-                table: 'player_profiles' 
-            }, (payload) => {
-                 setAllPlayers(prev => [...prev, payload.new as UserProfileData]);
-                 showToast({text: `¡${payload.new.first_name} se ha unido a la comunidad!`, type: 'info'});
-            })
-            .on('postgres_changes', { 
-                event: 'UPDATE', 
-                schema: 'public', 
-                table: 'player_profiles' 
-            }, (payload) => {
-                 setAllPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new as UserProfileData : p));
-                 if(userProfile?.id === payload.new.id) {
+        if (currentUserId) {
+            realtimeChannel = supabase.channel(`app-realtime-channel-user-${currentUserId}`)
+                .on('postgres_changes', { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'messages', 
+                    filter: `receiver_id=eq.${currentUserId}` 
+                }, (payload) => {
+                    const newMessage = payload.new as ChatMessage;
+                    setMessages(prev => [...prev, newMessage]);
+                    const sender = allPlayers.find(p => p.id === newMessage.sender_id) || allClubs.find(c => c.id === newMessage.sender_id);
+                    const senderName = sender ? ('first_name' in sender ? `${sender.first_name}` : sender.name) : 'un usuario';
+                    showToast({text: `Nuevo mensaje de ${senderName}`, type: 'info'});
+                })
+                 .on('postgres_changes', { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'notifications', 
+                    filter: `user_id=eq.${currentUserId}` 
+                }, (payload) => {
+                    const newNotification = payload.new as Notification;
+                    setNotifications(prev => [newNotification, ...prev].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+                    showToast({text: newNotification.title, type: 'info'});
+                })
+                 .on('postgres_changes', { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'player_profiles' 
+                }, (payload) => {
+                     setAllPlayers(prev => [...prev, payload.new as UserProfileData]);
+                })
+                .on('postgres_changes', { 
+                    event: 'UPDATE', 
+                    schema: 'public', 
+                    table: 'player_profiles',
+                    filter: `id=eq.${currentUserId}`
+                }, (payload) => {
                     const updatedProfile = payload.new as UserProfileData;
                     setUserProfile(prev => ({ 
                         ...prev!, 
                         ...updatedProfile,
-                        // Ensure cache-busting for updated avatar
                         avatar_url: updatedProfile.avatar_url ? `${updatedProfile.avatar_url.split('?')[0]}?t=${new Date().getTime()}` : null
                     }));
-                 }
-            })
-            .subscribe((status, err) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('Realtime channel connected!');
-                }
-                if (status === 'CHANNEL_ERROR') {
-                    console.error('Realtime channel error:', err);
-                }
-            });
+                })
+                .subscribe((status, err) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log('Realtime channel connected!');
+                    } else if (status === 'CHANNEL_ERROR') {
+                        console.error('Realtime channel error:', err);
+                    }
+                });
+        }
         
         return () => {
              supabase.removeChannel(realtimeChannel);
@@ -239,7 +254,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (error) {
             showToast({ text: `Error al cerrar sesión: ${error.message}`, type: 'error'});
         }
-        // onAuthStateChange will handle the state reset
+        // onAuthStateChange will handle resetting the state
         setIsLoading(false);
     }, [showToast]);
     
@@ -249,8 +264,8 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error) {
             showToast({ text: error.message, type: 'error'});
-            setIsLoading(false);
         }
+        setIsLoading(false);
     }, [showToast]);
 
     const handleClubLogin = useCallback(async ({ email, pass }: { email: string; pass: string }) => {
@@ -259,8 +274,8 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error) {
             showToast({ text: error.message, type: 'error'});
-            setIsLoading(false);
         }
+        setIsLoading(false);
     }, [showToast]);
 
     const handlePlayerRegister = async (profileData: Omit<UserProfileData, 'id' | 'avatar_url' | 'photos' | 'stats' | 'upcoming_matches' | 'match_history' | 'friends' | 'friendRequests' | 'notifications'>) => {
@@ -382,6 +397,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
              if (profileError) throw profileError;
     
             const courtsToInsert: Database['public']['Tables']['courts']['Insert'][] = newCourts.map(court => ({
+                id: court.id,
                 name: court.name,
                 type: court.type,
                 location: court.location,
@@ -510,7 +526,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         await supabase.from('notifications').update({ read: true }).eq('user_id', currentUserId).eq('read', false);
     }, [userProfile, loggedInClub]);
 
-    const handleAuthNavigate = (destination: 'player-login' | 'club-login' | 'player-signup' | 'club-signup') => {
+    const handleAuthNavigate = (destination: 'player-login' | 'club-login' | 'player-signup' | 'club-signup' | 'forgot-password') => {
         setView(destination);
     };
     
@@ -610,24 +626,21 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             city: updatedProfile.city,
             availability: updatedProfile.availability,
             category: updatedProfile.category,
-            avatar_url: finalAvatarUrl?.split('?')[0], // Save URL without cache buster
+            avatar_url: finalAvatarUrl?.split('?')[0],
             photos: validFinalPhotos,
         };
 
-        const { error } = await supabase.from('player_profiles').update(profileToUpdate).eq('id', userProfile.id);
+        const { data, error } = await supabase.from('player_profiles').update(profileToUpdate).eq('id', userProfile.id).select().single();
 
         if (error) {
             showToast({ text: `Error al actualizar el perfil: ${error.message}`, type: 'error'});
-        } else {
-             // Force a re-render with the new photo by adding a timestamp
-            const newAvatarUrl = finalAvatarUrl ? `${finalAvatarUrl.split('?')[0]}?t=${new Date().getTime()}` : null;
-            const newProfileState: UserProfileData = {
-                ...userProfile,
-                ...updatedProfile,
-                avatar_url: newAvatarUrl,
-                photos: validFinalPhotos,
-            };
-            setUserProfile(newProfileState);
+        } else if (data) {
+            const newProfileState: UserProfileData = data as any;
+            setUserProfile({
+                ...newProfileState,
+                // Force a re-render with the new photo by adding a timestamp
+                avatar_url: newProfileState.avatar_url ? `${newProfileState.avatar_url}?t=${new Date().getTime()}` : null,
+            });
             showToast({ text: "Perfil actualizado con éxito.", type: 'success'});
         }
     }, [userProfile, showToast]);
@@ -680,11 +693,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!userProfile || !supabase) return;
 
         const updatedFriends = [...(userProfile.friends || []), fromId];
-        const userUpdate: Database['public']['Tables']['player_profiles']['Update'] = { friends: updatedFriends };
-        const { error: userError } = await supabase
-            .from('player_profiles')
-            .update(userUpdate)
-            .eq('id', userProfile.id);
+        const { error: userError } = await supabase.from('player_profiles').update({ friends: updatedFriends }).eq('id', userProfile.id);
 
         if (userError) {
             showToast({ text: `Error al aceptar solicitud: ${userError.message}`, type: 'error'});
@@ -694,41 +703,35 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const { data: otherUserData } = await supabase.from('player_profiles').select('friends').eq('id', fromId).single();
         if (otherUserData && otherUserData.friends) {
             const updatedOtherUserFriends = [...otherUserData.friends, userProfile.id];
-             const otherUserUpdate: Database['public']['Tables']['player_profiles']['Update'] = { friends: updatedOtherUserFriends };
-            await supabase.from('player_profiles').update(otherUserUpdate).eq('id', fromId);
+            await supabase.from('player_profiles').update({ friends: updatedOtherUserFriends }).eq('id', fromId);
         }
 
         const notificationToRemove = notifications.find(n => n.type === 'friend_request' && n.payload?.fromId === fromId);
         if (notificationToRemove) {
             await supabase.from('notifications').update({read: true}).eq('id', notificationToRemove.id);
+            setNotifications(prev => prev.filter(n => n.id !== notificationToRemove.id));
         }
-
-        setUserProfile(prev => ({
-            ...prev!,
-            friends: updatedFriends,
-            notifications: prev!.notifications!.map(n => n.id === notificationToRemove?.id ? {...n, read: true} : n)
-        }));
         
-        const fromUser = allPlayers.find(p => p.id === fromId);
-        if (fromUser) {
-            const acceptNotification: Database['public']['Tables']['notifications']['Insert'] = {
-                type: 'friend_accept' as const,
-                title: '¡Solicitud de amistad aceptada!',
-                message: `${userProfile.first_name} ${userProfile.last_name} ha aceptado tu solicitud.`,
-                user_id: fromId,
-                read: false,
-            };
-            await supabase.from('notifications').insert(acceptNotification);
-        }
-    }, [userProfile, allPlayers, showToast, notifications]);
+        setUserProfile(prev => ({ ...prev!, friends: updatedFriends }));
+        
+        const acceptNotification: Database['public']['Tables']['notifications']['Insert'] = {
+            type: 'friend_accept' as const,
+            title: '¡Solicitud de amistad aceptada!',
+            message: `${userProfile.first_name} ${userProfile.last_name} ha aceptado tu solicitud.`,
+            user_id: fromId,
+            read: false,
+        };
+        await supabase.from('notifications').insert(acceptNotification);
+
+    }, [userProfile, showToast, notifications]);
     
     const handleDeclineFriendRequest = useCallback(async (fromId: string) => {
         if (!userProfile || !supabase) return;
 
         const notificationToRemove = notifications.find(n => n.type === 'friend_request' && n.payload?.fromId === fromId);
         if (notificationToRemove) {
-            await supabase.from('notifications').update({read: true}).eq('id', notificationToRemove.id);
-            setNotifications(prev => prev.map(n => n.id === notificationToRemove.id ? {...n, read: true} : n));
+            await supabase.from('notifications').delete().eq('id', notificationToRemove.id);
+            setNotifications(prev => prev.filter(n => n.id !== notificationToRemove.id));
         }
     }, [userProfile, notifications]);
 
@@ -736,8 +739,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!userProfile || !supabase || !window.confirm("¿Seguro que quieres eliminar a este amigo?")) return;
 
         const updatedFriends = userProfile.friends ? userProfile.friends.filter(id => id !== friendId) : [];
-        const userUpdate: Database['public']['Tables']['player_profiles']['Update'] = { friends: updatedFriends };
-        const { error: userError } = await supabase.from('player_profiles').update(userUpdate).eq('id', userProfile.id);
+        const { error: userError } = await supabase.from('player_profiles').update({ friends: updatedFriends }).eq('id', userProfile.id);
 
         if (userError) {
             showToast({ text: `Error al eliminar amigo: ${userError.message}`, type: 'error'});
@@ -747,8 +749,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const { data: otherUserData } = await supabase.from('player_profiles').select('friends').eq('id', friendId).single();
         if (otherUserData && otherUserData.friends) {
             const updatedOtherUserFriends = (otherUserData.friends || []).filter((id: string) => id !== userProfile.id);
-            const otherUserUpdate: Database['public']['Tables']['player_profiles']['Update'] = { friends: updatedOtherUserFriends };
-            await supabase.from('player_profiles').update(otherUserUpdate).eq('id', friendId);
+            await supabase.from('player_profiles').update({ friends: updatedOtherUserFriends }).eq('id', friendId);
         }
         
         setUserProfile(prev => ({...prev!, friends: updatedFriends}));

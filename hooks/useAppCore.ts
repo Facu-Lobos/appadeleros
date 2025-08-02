@@ -56,7 +56,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         }
 
         const fetchAllPublicData = async () => {
-             const [
+            const [
                 { data: clubsData, error: clubsError },
                 { data: courtsData, error: courtsError },
                 { data: playersData, error: playersError },
@@ -71,44 +71,44 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 supabase.from('tournaments').select('*'),
                 supabase.from('tournament_registrations').select('*'),
             ]);
-    
+
             if (!isMounted) return;
 
             if (clubsError) console.error("Error fetching clubs:", clubsError.message);
             setAllClubs((clubsData as any) || []);
-    
+
             if (courtsError) console.error("Error fetching courts:", courtsError.message);
             setBaseCourts((courtsData as any) || []);
-    
+
             if (playersError) console.error("Error fetching players:", playersError.message);
             setAllPlayers((playersData as any) || []);
-    
+
             if (rankingsError) console.error("Error fetching rankings:", rankingsError.message);
             setRankings((rankingsData as any) || []);
-    
-            if (tournamentsData) {
+
+            if (tournamentsData && registrationsData) {
                 const tournamentsWithRegistrations = tournamentsData.map(t => ({
                     ...t,
-                    tournament_registrations: (registrationsData as TournamentRegistration[])?.filter(r => r.tournament_id === t.id) || []
+                    tournament_registrations: registrationsData.filter(r => r.tournament_id === t.id) || []
                 }));
                 setInitialTournaments(tournamentsWithRegistrations as any);
             } else {
                 if (tournamentsError) console.error("Error fetching tournaments:", tournamentsError.message);
+                if (registrationsError) console.error("Error fetching registrations:", registrationsError.message);
                 setInitialTournaments([]);
             }
         };
-
+        
         const fetchUserSessionData = async (userId: string) => {
             if (!supabase || !isMounted) return false;
-        
-             // --- Robust fetching to avoid failing joins ---
-             // Step 1: Try to fetch player profile first
+
+            // Try to fetch player profile first
             const playerProfileRes = await supabase.from('player_profiles').select('*').eq('id', userId).single();
             if (playerProfileRes.data && isMounted) {
                 const profile = playerProfileRes.data as unknown as UserProfileData;
                 
                 const [notificationsRes, messagesRes] = await Promise.all([
-                    supabase.from('notifications').select('*').eq('user_id', userId),
+                    supabase.from('notifications').select('*').eq('user_id', userId).order('timestamp', { ascending: false }),
                     supabase.from('messages').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
                 ]);
 
@@ -121,14 +121,14 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 }
                 return true;
             }
-        
+
             // If not a player, try to fetch club profile
             const clubProfileRes = await supabase.from('club_profiles').select('*').eq('id', userId).single();
             if (clubProfileRes.data && isMounted) {
                 const clubProfile = clubProfileRes.data as unknown as ClubProfileData;
                 
-                 const [notificationsRes, messagesRes] = await Promise.all([
-                    supabase.from('notifications').select('*').eq('user_id', userId),
+                const [notificationsRes, messagesRes] = await Promise.all([
+                    supabase.from('notifications').select('*').eq('user_id', userId).order('timestamp', { ascending: false }),
                     supabase.from('messages').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
                 ]);
 
@@ -142,41 +142,40 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 return true;
             }
             
-            // If neither profile is found
             if (isMounted) console.error("No profile found for user ID:", userId);
             return false;
         };
-    
+        
         const initializeApp = async () => {
             try {
                 if (!isMounted) return;
                 setIsLoading(true);
                 await fetchAllPublicData();
+                
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession();
                  if (sessionError) {
                     console.error("Auth session error (e.g., invalid refresh token):", sessionError.message);
-                    // This is not a fatal error, just means user is not logged in.
                 }
-
-                if (session && isMounted) {
+                
+                if (session?.user && isMounted) {
                     const profileFound = await fetchUserSessionData(session.user.id);
-                    if (!profileFound && isMounted) {
+                    if (!profileFound) {
                         showToast({ text: "No se encontró un perfil para este usuario. Se cerrará la sesión.", type: 'error' });
                         await supabase.auth.signOut();
                     }
                 }
             } catch (error: any) {
                 console.error("Error during app initialization:", error);
-                if(isMounted) showToast({ text: `Ocurrió un error inesperado: ${error.message}`, type: 'error' });
+                if (isMounted) showToast({ text: `Ocurrió un error inesperado: ${error.message}`, type: 'error' });
             } finally {
                 if (isMounted) setIsLoading(false);
             }
         };
-    
+
         initializeApp();
-    
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-             if (!isMounted) return;
+            if (!isMounted) return;
             if (event === 'SIGNED_IN' && session) {
                  setIsLoading(true);
                  await fetchAllPublicData();
@@ -188,6 +187,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 setMessages([]);
                 setNotifications([]);
                 setView('auth');
+                setIsLoading(false); // Make sure loader is off after logout
             }
         });
     
@@ -204,7 +204,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!supabase) return;
         const currentUserId = userProfile?.id || loggedInClub?.id;
         
-        // Clean up previous channel subscriptions before creating new ones.
         supabase.removeAllChannels();
 
         if (!currentUserId) return;
@@ -250,7 +249,14 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                      setUserProfile(prev => ({ ...prev!, ...payload.new }));
                  }
             })
-            .subscribe();
+            .subscribe((status, err) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('Realtime channel connected!');
+                }
+                if (status === 'CHANNEL_ERROR') {
+                    console.error('Realtime channel error:', err);
+                }
+            });
         
         return () => {
              supabase.removeChannel(realtimeChannel);
@@ -647,7 +653,6 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             const newProfileState: UserProfileData = {
                 ...userProfile,
                 ...updatedProfile,
-                // Force reload of the image by adding a timestamp
                 avatar_url: finalAvatarUrl ? `${finalAvatarUrl.split('?')[0]}?t=${new Date().getTime()}` : null,
                 photos: validFinalPhotos,
             };

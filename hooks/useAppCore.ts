@@ -1,5 +1,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
+
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { UserProfileData, ClubProfileData, CourtData, PublicMatch, Ranking, ChatMessage, AppView, PlayerAppView, ClubAppView, Notification, NotificationType, ToastMessage, Booking, Database, Tournament, Json, TournamentRegistration } from '../types';
 
@@ -48,153 +50,113 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
 
     // --- Auth and Data Loading ---
     useEffect(() => {
-        let isMounted = true;
         if (!supabase) {
             showToast({ text: "Error: No se pudo conectar a la base de datos.", type: 'error' });
             setIsLoading(false);
             return;
         }
 
-        const fetchAllPublicData = async () => {
-            const [
-                { data: clubsData, error: clubsError },
-                { data: courtsData, error: courtsError },
-                { data: playersData, error: playersError },
-                { data: rankingsData, error: rankingsError },
-                { data: tournamentsData, error: tournamentsError },
-                { data: registrationsData, error: registrationsError },
-            ] = await Promise.all([
-                supabase.from('club_profiles').select('*'),
-                supabase.from('courts').select('*'),
-                supabase.from('player_profiles').select('*'),
-                supabase.from('rankings').select('*'),
-                supabase.from('tournaments').select('*'),
-                supabase.from('tournament_registrations').select('*'),
-            ]);
+        const fetchInitialData = async () => {
+             setIsLoading(true);
+             try {
+                 const [
+                    { data: clubsData, error: clubsError },
+                    { data: courtsData, error: courtsError },
+                    { data: playersData, error: playersError },
+                    { data: rankingsData, error: rankingsError },
+                    { data: tournamentsData, error: tournamentsError },
+                    { data: registrationsData, error: registrationsError },
+                ] = await Promise.all([
+                    supabase.from('club_profiles').select('*'),
+                    supabase.from('courts').select('*'),
+                    supabase.from('player_profiles').select('*'),
+                    supabase.from('rankings').select('*'),
+                    supabase.from('tournaments').select('*'),
+                    supabase.from('tournament_registrations').select('*'),
+                ]);
 
-            if (!isMounted) return;
+                if (clubsError) console.error("Error fetching clubs:", clubsError.message);
+                setAllClubs((clubsData as any) || []);
 
-            if (clubsError) console.error("Error fetching clubs:", clubsError.message);
-            setAllClubs((clubsData as any) || []);
+                if (courtsError) console.error("Error fetching courts:", courtsError.message);
+                setBaseCourts((courtsData as any) || []);
 
-            if (courtsError) console.error("Error fetching courts:", courtsError.message);
-            setBaseCourts((courtsData as any) || []);
+                if (playersError) console.error("Error fetching players:", playersError.message);
+                setAllPlayers((playersData as any) || []);
 
-            if (playersError) console.error("Error fetching players:", playersError.message);
-            setAllPlayers((playersData as any) || []);
+                if (rankingsError) console.error("Error fetching rankings:", rankingsError.message);
+                setRankings((rankingsData as any) || []);
 
-            if (rankingsError) console.error("Error fetching rankings:", rankingsError.message);
-            setRankings((rankingsData as any) || []);
+                if (tournamentsData && registrationsData) {
+                    const tournamentsWithRegistrations = tournamentsData.map(t => ({
+                        ...t,
+                        tournament_registrations: registrationsData.filter(r => r.tournament_id === t.id) || []
+                    }));
+                    setInitialTournaments(tournamentsWithRegistrations as any);
+                } else {
+                    if (tournamentsError) console.error("Error fetching tournaments:", tournamentsError.message);
+                    if (registrationsError) console.error("Error fetching registrations:", registrationsError.message);
+                }
 
-            if (tournamentsData && registrationsData) {
-                const tournamentsWithRegistrations = tournamentsData.map(t => ({
-                    ...t,
-                    tournament_registrations: registrationsData.filter(r => r.tournament_id === t.id) || []
-                }));
-                setInitialTournaments(tournamentsWithRegistrations as any);
-            } else {
-                if (tournamentsError) console.error("Error fetching tournaments:", tournamentsError.message);
-                if (registrationsError) console.error("Error fetching registrations:", registrationsError.message);
-                setInitialTournaments([]);
-            }
-        };
-        
+                // Now check for active session
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    await fetchUserSessionData(session.user.id);
+                }
+             } catch (e: any) {
+                showToast({ text: `Error al cargar datos: ${e.message}`, type: 'error' });
+             } finally {
+                setIsLoading(false);
+             }
+        }
+
         const fetchUserSessionData = async (userId: string) => {
-            if (!supabase || !isMounted) return false;
-
-            // Try to fetch player profile first
-            const playerProfileRes = await supabase.from('player_profiles').select('*').eq('id', userId).single();
-            if (playerProfileRes.data && isMounted) {
+            const playerProfileRes = await supabase.from('player_profiles').select('*, notifications(*)').eq('id', userId).single();
+            if (playerProfileRes.data) {
                 const profile = playerProfileRes.data as unknown as UserProfileData;
+                const messagesRes = await supabase.from('messages').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
                 
-                const [notificationsRes, messagesRes] = await Promise.all([
-                    supabase.from('notifications').select('*').eq('user_id', userId).order('timestamp', { ascending: false }),
-                    supabase.from('messages').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-                ]);
-
-                if (isMounted) {
-                    profile.notifications = notificationsRes.data || [];
-                    setNotifications(notificationsRes.data || []);
-                    setMessages(messagesRes.data || []);
-                    setUserProfile(profile);
-                    setLoggedInClub(null);
-                }
-                return true;
+                setMessages(messagesRes.data || []);
+                setNotifications(profile.notifications || []);
+                setUserProfile(profile);
+                setLoggedInClub(null);
+                return;
             }
 
-            // If not a player, try to fetch club profile
-            const clubProfileRes = await supabase.from('club_profiles').select('*').eq('id', userId).single();
-            if (clubProfileRes.data && isMounted) {
+            const clubProfileRes = await supabase.from('club_profiles').select('*, notifications(*)').eq('id', userId).single();
+            if (clubProfileRes.data) {
                 const clubProfile = clubProfileRes.data as unknown as ClubProfileData;
-                
-                const [notificationsRes, messagesRes] = await Promise.all([
-                    supabase.from('notifications').select('*').eq('user_id', userId).order('timestamp', { ascending: false }),
-                    supabase.from('messages').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-                ]);
+                const messagesRes = await supabase.from('messages').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
 
-                if (isMounted) {
-                    clubProfile.notifications = notificationsRes.data || [];
-                    setNotifications(notificationsRes.data || []);
-                    setMessages(messagesRes.data || []);
-                    setLoggedInClub(clubProfile);
-                    setUserProfile(null);
-                }
-                return true;
+                setMessages(messagesRes.data || []);
+                setNotifications(clubProfile.notifications || []);
+                setLoggedInClub(clubProfile);
+                setUserProfile(null);
+                return;
             }
             
-            if (isMounted) console.error("No profile found for user ID:", userId);
-            return false;
+            showToast({ text: "No se encontró un perfil para este usuario. Se cerrará la sesión.", type: 'error' });
+            await supabase.auth.signOut();
         };
         
-        const initializeApp = async () => {
-            try {
-                if (!isMounted) return;
-                setIsLoading(true);
-                await fetchAllPublicData();
-                
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                 if (sessionError) {
-                    console.error("Auth session error (e.g., invalid refresh token):", sessionError.message);
-                }
-                
-                if (session?.user && isMounted) {
-                    const profileFound = await fetchUserSessionData(session.user.id);
-                    if (!profileFound) {
-                        showToast({ text: "No se encontró un perfil para este usuario. Se cerrará la sesión.", type: 'error' });
-                        await supabase.auth.signOut();
-                    }
-                }
-            } catch (error: any) {
-                console.error("Error during app initialization:", error);
-                if (isMounted) showToast({ text: `Ocurrió un error inesperado: ${error.message}`, type: 'error' });
-            } finally {
-                if (isMounted) setIsLoading(false);
-            }
-        };
-
-        initializeApp();
+        fetchInitialData();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (!isMounted) return;
-            if (event === 'SIGNED_IN' && session) {
-                 setIsLoading(true);
-                 await fetchAllPublicData();
-                 await fetchUserSessionData(session.user.id);
-                 setIsLoading(false);
-            } else if (event === 'SIGNED_OUT') {
+            setIsLoading(true);
+            if (session?.user) {
+                await fetchInitialData(); // Refetch all data to be sure
+            } else {
                 setUserProfile(null);
                 setLoggedInClub(null);
                 setMessages([]);
                 setNotifications([]);
                 setView('auth');
-                setIsLoading(false); // Make sure loader is off after logout
             }
+            setIsLoading(false);
         });
     
         return () => {
-            isMounted = false;
             subscription?.unsubscribe();
-            supabase.removeAllChannels();
         };
     
     }, [showToast]);
@@ -204,7 +166,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (!supabase) return;
         const currentUserId = userProfile?.id || loggedInClub?.id;
         
-        supabase.removeAllChannels();
+        supabase.removeAllChannels(); // Clean up previous channels
 
         if (!currentUserId) return;
 
@@ -246,7 +208,13 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
             }, (payload) => {
                  setAllPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new as UserProfileData : p));
                  if(userProfile?.id === payload.new.id) {
-                     setUserProfile(prev => ({ ...prev!, ...payload.new }));
+                    const updatedProfile = payload.new as UserProfileData;
+                    setUserProfile(prev => ({ 
+                        ...prev!, 
+                        ...updatedProfile,
+                        // Ensure cache-busting for updated avatar
+                        avatar_url: updatedProfile.avatar_url ? `${updatedProfile.avatar_url.split('?')[0]}?t=${new Date().getTime()}` : null
+                    }));
                  }
             })
             .subscribe((status, err) => {
@@ -270,8 +238,9 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         const { error } = await supabase.auth.signOut();
         if (error) {
             showToast({ text: `Error al cerrar sesión: ${error.message}`, type: 'error'});
-            setIsLoading(false);
         }
+        // onAuthStateChange will handle the state reset
+        setIsLoading(false);
     }, [showToast]);
     
     const handlePlayerLogin = useCallback(async ({ email, pass }: { email: string; pass: string }) => {
@@ -378,7 +347,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         try {
             const photoUrls = await Promise.all(
                 photoFiles.map(async (file) => {
-                    const filePath = `gallery/${user.id}/${Date.now()}_${file.name}`;
+                    const filePath = `${user.id}/${Date.now()}_${file.name}`;
                     const { error: uploadError } = await supabase.storage.from('club-photos').upload(filePath, file);
                     if (uploadError) {
                         console.error('Error uploading photo:', uploadError);
@@ -553,7 +522,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 if (photo.startsWith('data:image')) {
                     const blob = dataURLtoBlob(photo);
                     if (blob) {
-                        const filePath = `gallery/${loggedInClub.id}/${Date.now()}.png`;
+                        const filePath = `${loggedInClub.id}/${Date.now()}.png`;
                         const { error } = await supabase.storage.from('club-photos').upload(filePath, blob, { upsert: true });
                          if (error) { console.error(error); return null; }
                         const { data: { publicUrl } } = supabase.storage.from('club-photos').getPublicUrl(filePath);
@@ -600,7 +569,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (updatedProfile.avatar_url && updatedProfile.avatar_url.startsWith('data:image')) {
             const blob = dataURLtoBlob(updatedProfile.avatar_url);
             if (blob) {
-                const filePath = `avatars/${userProfile.id}/avatar.png`;
+                const filePath = `${userProfile.id}/avatar.png`;
                 const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true, contentType: blob.type });
                  if (uploadError) {
                     showToast({ text: `Error al subir la nueva foto: ${uploadError.message}`, type: 'error' });
@@ -616,7 +585,7 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
                 if (photo.startsWith('data:image')) {
                     const blob = dataURLtoBlob(photo);
                     if (blob) {
-                        const filePath = `player-photos/${userProfile.id}/${Date.now()}_${Math.random()}.png`;
+                        const filePath = `${userProfile.id}/gallery_${Date.now()}_${Math.random()}.png`;
                         const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true, contentType: blob.type });
                         if (uploadError) {
                             console.error('Error al subir foto de galería:', uploadError);
@@ -650,10 +619,12 @@ export const useAppCore = ({ setIsLoading, showToast }: useAppCoreProps) => {
         if (error) {
             showToast({ text: `Error al actualizar el perfil: ${error.message}`, type: 'error'});
         } else {
+             // Force a re-render with the new photo by adding a timestamp
+            const newAvatarUrl = finalAvatarUrl ? `${finalAvatarUrl.split('?')[0]}?t=${new Date().getTime()}` : null;
             const newProfileState: UserProfileData = {
                 ...userProfile,
                 ...updatedProfile,
-                avatar_url: finalAvatarUrl ? `${finalAvatarUrl.split('?')[0]}?t=${new Date().getTime()}` : null,
+                avatar_url: newAvatarUrl,
                 photos: validFinalPhotos,
             };
             setUserProfile(newProfileState);
